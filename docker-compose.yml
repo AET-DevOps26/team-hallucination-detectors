@@ -1,0 +1,25 @@
+services:
+  api-service:
+    build:
+      context: ./services/api-service
+    container_name: vibeshield-api
+    ports:
+      - "8080:8080"
+    environment:
+      VIBESHIELD_CORS_ALLOWED_ORIGINS: http://localhost:3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: vibeshield-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-service
