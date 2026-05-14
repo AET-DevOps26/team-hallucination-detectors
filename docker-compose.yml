@@ -13,6 +13,18 @@ services:
       timeout: 3s
       retries: 10
 
+  langchain-service:
+    build:
+      context: ./services/langchain-service
+    container_name: vibeshield-langchain
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MODEL_NAME: ${LANGCHAIN_MODEL_NAME:-gpt-4o-mini}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+
   client:
     build:
       context: ./client
