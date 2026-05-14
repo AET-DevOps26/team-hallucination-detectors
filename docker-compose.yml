@@ -23,3 +23,16 @@ services:
       - "3000:3000"
     depends_on:
       - api-service
+  database:
+    image: postgres:16
+    container_name: vibeshield-db
+    environment:
+      POSTGRES_DB: vibeshield
+      POSTGRES_USER: vibeshield
+      POSTGRES_PASSWORD: vibeshield
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+    postgres_data:
