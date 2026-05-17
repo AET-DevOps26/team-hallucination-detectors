@@ -12,6 +12,14 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+  auth-service:
+    build:
+      context: ./services/auth-service
+    container_name: vibeshield-auth
+    ports:
+      - "8081:8080"
+    depends_on:
+      - database
 
   langchain-service:
     build:
