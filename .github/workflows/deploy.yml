@@ -1,0 +1,3 @@
+on:
+  push:
+    branches: [ "feature/auth-service" ] # Triggers whenever you push code to this branch
