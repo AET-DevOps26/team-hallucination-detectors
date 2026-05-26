@@ -37,7 +37,7 @@ services:
     build:
       context: ./client
       args:
-        VITE_API_BASE_URL: http://localhost:8080
+        VITE_API_BASE_URL: http://20.91.222.28:8080
     container_name: vibeshield-client
     ports:
       - "3000:3000"
