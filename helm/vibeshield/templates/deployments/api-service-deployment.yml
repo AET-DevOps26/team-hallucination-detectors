@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-service
+  template:
+    metadata:
+      labels:
+        app: api-service
+    spec:
+      containers:
+        - name: api-service
+          image: "{{ .Values.images.apiService }}:{{ .Values.images.tag }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: VIBESHIELD_CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.apiService.corsAllowedOrigins }}"
