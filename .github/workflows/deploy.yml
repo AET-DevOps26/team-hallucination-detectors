@@ -3,7 +3,7 @@ name: Deploy Team Project
 on:
   workflow_dispatch: # Allows you to click the manual "Run workflow" button
   push:
-    branches: [ "feature/auth-service" ] # Runs automatically when you push to this branch
+    branches: [ "main" ] # Runs automatically on merge to main
 
 jobs:
   deploy:
