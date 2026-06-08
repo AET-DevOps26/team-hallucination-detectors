@@ -1,0 +1,117 @@
+# Continuous Integration gate.
+#
+# Runs on every pull request targeting `main` (and on the merge commit once it
+# lands). Each service is built and its tests run in an isolated, clearly-named
+# job so each can be enforced as a required status check in branch protection.
+# Any failure fails the run, blocking merge — this is the gate against an
+# unstable `main`.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded runs for the same PR/branch to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Spring Boot services: compile + run the full test suite (tests are H2-backed,
+  # so no external Postgres is needed). `gradle build` assembles the jar and runs
+  # `test`/`check`, so it verifies both "build" and "tests" in one step.
+  spring-services:
+    name: spring (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth-service
+          - api-service
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # No gradle wrapper is committed, so install the same Gradle version the
+      # Dockerfiles build with (8.10.2) and cache its dependencies.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Build and test ${{ matrix.service }}
+        working-directory: services/${{ matrix.service }}
+        run: gradle build --no-daemon
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.service }}
+          path: services/${{ matrix.service }}/build/reports/tests/
+          if-no-files-found: ignore
+
+  # React client: type-check + production build, plus lint. No test script is
+  # defined, so the build itself is the verification gate.
+  client:
+    name: client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Build
+        working-directory: client
+        run: npm run build
+
+  # Python GenAI service: install dependencies and byte-compile the package to
+  # catch import/syntax errors. No test suite exists yet, so this is the build gate.
+  langchain-service:
+    name: langchain-service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/langchain-service/requirements.txt
+
+      - name: Install dependencies
+        working-directory: services/langchain-service
+        run: pip install -r requirements.txt
+
+      - name: Compile sources
+        working-directory: services/langchain-service
+        run: python -m compileall app
