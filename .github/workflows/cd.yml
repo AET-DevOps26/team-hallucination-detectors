@@ -1,0 +1,101 @@
+# Continuous Delivery.
+#
+# On merge to `main` (or manual dispatch): build & publish every service image to
+# GHCR, then — only once ALL images are published — deploy them to Kubernetes.
+# The `deploy` job `needs` `build-and-publish`, so it can never run against an
+# image tag that hasn't been pushed yet (closes the publish/deploy race).
+name: Build, Publish & Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+# Don't run two deploys at once: let an in-flight pipeline finish, queue the next.
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/aet-devops26/team-hallucination-detectors
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service:
+          - name: api-service
+            context: ./services/api-service
+          - name: auth-service
+            context: ./services/auth-service
+          - name: langchain-service
+            context: ./services/langchain-service
+          - name: client
+            context: ./client
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Derive immutable + convenience tags and OCI labels/annotations from the
+      # git context. `sha-<commit>` is the immutable reference deploys pin to;
+      # `latest` moves only on the default branch; semver tags appear on v* tags.
+      - name: Derive tags & labels for ${{ matrix.service.name }}
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service.name }}
+          tags: |
+            type=sha,prefix=sha-,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+
+  deploy:
+    # Gate: only deploy after every image above is built and pushed.
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_AET }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      # Pin to the immutable image tag published for this commit so the deploy
+      # ships exactly the merged code (overrides values.yaml's `tag: latest`).
+      # On a manual dispatch, github.sha is the SHA of the ref being run.
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
+            --set images.tag=sha-${{ github.sha }}
+          kubectl get pods -n ge65poj
