@@ -15,6 +15,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Smoke test booting the full application context to verify the service starts and serves HTTP.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 class HelloControllerTest {

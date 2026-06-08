@@ -1,5 +1,8 @@
 package de.tum.devops.vibeshield.dto;
 
+/**
+ * Request body for the login endpoint: the user's email and password.
+ */
 public class LoginRequest {
 
     private String email;

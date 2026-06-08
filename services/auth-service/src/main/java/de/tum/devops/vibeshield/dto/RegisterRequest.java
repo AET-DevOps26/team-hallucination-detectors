@@ -1,5 +1,8 @@
 package de.tum.devops.vibeshield.dto;
 
+/**
+ * Request body for the registration endpoint: the new user's email and password.
+ */
 public class RegisterRequest {
 
     private String email;

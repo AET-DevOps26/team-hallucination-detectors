@@ -2,6 +2,10 @@ package de.tum.devops.vibeshield.model;
 
 import jakarta.persistence.*;
 
+/**
+ * JPA entity for a registered user, persisted to the {@code users} table.
+ * Stores the login email (unique) and a BCrypt-hashed password.
+ */
 @Entity
 @Table(name = "users")
 public class User {

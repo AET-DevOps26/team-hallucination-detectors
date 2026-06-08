@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * REST controller for user authentication: registration, login, and current-user lookup.
+ * All endpoints are served under {@code /api/v1/auth}.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -20,16 +24,19 @@ public class AuthController {
     private final JwtService jwtService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /** Injects the user store and JWT issuer used by the authentication endpoints. */
     public AuthController(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
     }
 
+    /** Liveness check that confirms the auth service is reachable. */
     @GetMapping("/health")
     public String health() {
         return "Auth service running";
     }
 
+    /** Registers a new user, rejecting duplicate emails and storing a BCrypt-hashed password. */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -48,6 +55,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));
     }
 
+    /** Verifies email/password credentials and returns a signed JWT on success, 401 otherwise. */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
@@ -71,6 +79,7 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponse(token, user.getEmail()));
     }
 
+    /** Returns the email of the user identified by the Bearer token in the Authorization header. */
     @GetMapping("/me")
     public ResponseEntity<?> me(@RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {

@@ -5,9 +5,13 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Web/MVC configuration for the auth service; enables CORS for the VibeShield frontend origins.
+ */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /** Permits the configured frontend origins to call the auth API across origins. */
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
