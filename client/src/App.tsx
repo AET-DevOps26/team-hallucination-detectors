@@ -57,8 +57,12 @@ export default function App() {
       setAuthMessage("Login successful.");
       setEmail("");
       setPassword("");
-    } catch {
-      setAuthError("Authentication failed. Please check your email and password.");
+    } catch (err) {
+      const fallback =
+        mode === "register"
+          ? "Registration failed. Please try again."
+          : "Login failed. Please try again.";
+      setAuthError(err instanceof Error ? err.message : fallback);
     }
   }
 
