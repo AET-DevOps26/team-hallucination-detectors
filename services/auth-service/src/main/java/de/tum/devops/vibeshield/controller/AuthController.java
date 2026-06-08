@@ -1,6 +1,7 @@
 package de.tum.devops.vibeshield.controller;
 
 import de.tum.devops.vibeshield.dto.AuthResponse;
+import de.tum.devops.vibeshield.dto.ErrorResponse;
 import de.tum.devops.vibeshield.dto.LoginRequest;
 import de.tum.devops.vibeshield.dto.RegisterRequest;
 import de.tum.devops.vibeshield.model.User;
@@ -40,7 +41,8 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is already registered"));
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("EMAIL_ALREADY_REGISTERED", "Email is already registered"));
         }
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
@@ -62,7 +64,8 @@ public class AuthController {
                 .orElse(null);
 
         if (user == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password"));
+            return ResponseEntity.status(401)
+                    .body(new ErrorResponse("INVALID_CREDENTIALS", "Invalid email or password"));
         }
 
         boolean passwordMatches = passwordEncoder.matches(
@@ -71,7 +74,8 @@ public class AuthController {
         );
 
         if (!passwordMatches) {
-            return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password"));
+            return ResponseEntity.status(401)
+                    .body(new ErrorResponse("INVALID_CREDENTIALS", "Invalid email or password"));
         }
 
         String token = jwtService.generateToken(user);
@@ -83,13 +87,15 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(@RequestHeader(name = "Authorization", required = false) String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body(Map.of("error", "Missing or invalid Authorization header"));
+            return ResponseEntity.status(401)
+                    .body(new ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header"));
         }
 
         String token = authorizationHeader.substring(7);
 
         if (!jwtService.isTokenValid(token)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Invalid token"));
+            return ResponseEntity.status(401)
+                    .body(new ErrorResponse("INVALID_TOKEN", "Invalid token"));
         }
 
         String email = jwtService.extractEmail(token);

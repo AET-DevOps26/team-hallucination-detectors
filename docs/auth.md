@@ -39,11 +39,16 @@ All routes are served under `/api/v1/auth`.
 | Method | Path | Auth | Body | Success | Errors |
 |---|---|---|---|---|---|
 | `GET`  | `/health`   | — | — | `200` `"Auth service running"` (text) | — |
-| `POST` | `/register` | — | `{ email, password }` | `200` `{ message }` | `400` `{ error }` if email already registered |
-| `POST` | `/login`    | — | `{ email, password }` | `200` `{ token, email }` | `401` `{ error }` on bad credentials |
-| `GET`  | `/me`       | Bearer token | — | `200` `{ email }` | `401` `{ error }` if header missing/invalid |
+| `POST` | `/register` | — | `{ email, password }` | `200` `{ message }` | `400` if email already registered |
+| `POST` | `/login`    | — | `{ email, password }` | `200` `{ token, email }` | `401` on bad credentials |
+| `GET`  | `/me`       | Bearer token | — | `200` `{ email }` | `401` if header missing/invalid |
 
 Send the token returned by `/login` as `Authorization: Bearer <token>` to `/me`.
+
+All errors use the unified schema `{ code, message, details }` (see `dto/ErrorResponse.java`),
+shared across every VibeShield service. Codes emitted here: `EMAIL_ALREADY_REGISTERED`,
+`INVALID_CREDENTIALS`, `UNAUTHORIZED`, `INVALID_TOKEN`, and `INTERNAL_ERROR` for unexpected
+failures. `details` is `null` unless an error carries structured context.
 
 Interactive API docs (when running): `http://localhost:8081/swagger-ui.html`
 (OpenAPI JSON at `/v3/api-docs`).
@@ -95,7 +100,5 @@ These deviate from the project conventions and are worth tracking:
   labels Prometheus metrics, so fixing it matters for observability.
 - **Hardcoded config:** DB credentials live in `application.yml` and CORS origins are hardcoded
   in `WebConfig`. These should be externalised to env vars/Secrets.
-- **Error schema mismatch:** responses use `{ error }`, but the agreed unified schema is
-  `{ code, message, details }`.
 - **Leftover test:** `HelloControllerTest` calls `/api/v1/hello`, which this service does not
   expose; it boots the context but the assertions target the wrong endpoint.
