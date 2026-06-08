@@ -38,11 +38,11 @@ export async function fetchHello(): Promise<HelloResponse> {
 }
 
 export async function registerUser(email: string, password: string): Promise<void> {
-  await authClient.post("/auth/register", { email, password });
+  await authClient.post("/api/v1/auth/register", { email, password });
 }
 
 export async function loginUser(email: string, password: string): Promise<AuthResponse> {
-  const { data } = await authClient.post<AuthResponse>("/auth/login", {
+  const { data } = await authClient.post<AuthResponse>("/api/v1/auth/login", {
     email,
     password,
   });
@@ -51,7 +51,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 }
 
 export async function fetchCurrentUser(token: string): Promise<CurrentUserResponse> {
-  const { data } = await authClient.get<CurrentUserResponse>("/auth/me", {
+  const { data } = await authClient.get<CurrentUserResponse>("/api/v1/auth/me", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
