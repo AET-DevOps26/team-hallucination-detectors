@@ -1,0 +1,36 @@
+name: Deploy Team Project
+
+on:
+  workflow_dispatch: # Allows you to click the manual "Run workflow" button
+  push:
+    branches: [ "main" ] # Runs automatically on merge to main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Copy Files to Azure VM via SCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.AZURE_PUBLIC_IP }}
+        username: ${{ secrets.AZURE_USER }}
+        key: ${{ secrets.AZURE_PRIVATE_KEY }}
+        source: "." 
+        target: "~/app"
+
+    - name: Execute Docker Compose Over SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.AZURE_PUBLIC_IP }}
+        username: ${{ secrets.AZURE_USER }}
+        key: ${{ secrets.AZURE_PRIVATE_KEY }}
+        script: |
+          cd ~/app
+          # Shuts down old containers (the || true prevents errors if it's the first time running)
+          docker compose down || true 
+          # Builds and starts the new containers
+          docker compose up -d --build

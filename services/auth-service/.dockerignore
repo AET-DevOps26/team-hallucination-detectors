@@ -1,0 +1,8 @@
+.gradle/
+build/
+.idea/
+.vscode/
+*.iml
+gradle/wrapper/gradle-wrapper.jar
+.gitignore
+README.md

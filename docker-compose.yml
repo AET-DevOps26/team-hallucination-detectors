@@ -6,12 +6,20 @@ services:
     ports:
       - "8080:8080"
     environment:
-      VIBESHIELD_CORS_ALLOWED_ORIGINS: http://localhost:3000
+      VIBESHIELD_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://135.225.132.161:3000
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s
       timeout: 3s
       retries: 10
+  auth-service:
+    build:
+      context: ./services/auth-service
+    container_name: vibeshield-auth
+    ports:
+      - "8081:8080"
+    depends_on:
+      - database
 
   langchain-service:
     build:
@@ -29,7 +37,8 @@ services:
     build:
       context: ./client
       args:
-        VITE_API_BASE_URL: http://localhost:8080
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_AUTH_BASE_URL: ${VITE_AUTH_BASE_URL:-http://localhost:8081}
     container_name: vibeshield-client
     ports:
       - "3000:3000"

@@ -22,20 +22,30 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
-
+ansible/inventory.ini
+*.pem
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
 # IntelliJ
 .idea/
 *.iml
 *.iws
 *.ipr
-
+*.pem
 # VS Code
 .vscode/
 !.vscode/extensions.json
-
+infra/ansible/inventory.ini
 # macOS
 .DS_Store
-
+bin/
+.gradle/
+build/
+infra/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
 # Windows
 Thumbs.db
 ehthumbs.db
@@ -43,3 +53,4 @@ Desktop.ini
 
 # Logs
 *.log
+infra/
