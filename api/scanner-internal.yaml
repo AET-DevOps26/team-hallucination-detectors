@@ -1,0 +1,191 @@
+openapi: 3.0.3
+
+# Internal contract between the central backend (api-service) and the
+# scanner-service (issue #27). The scanner is NOT exposed through the public
+# gateway — only the api-service reaches it on the internal container network,
+# which is why no authentication scheme is defined here.
+#
+# The ScanCheck and Severity enums are intentionally duplicated from
+# openapi.yaml (the public contract): the two files are consumed by different
+# code generators. Keep the enum values in sync when editing either file.
+
+info:
+  title: VibeShield Scanner Internal API
+  version: 1.0.0
+  description: |
+    Service-to-service contract for executing surface-level security scans.
+
+    The api-service background worker sends one synchronous `POST /scan` per
+    scan job and waits for the result; queueing, retries, persistence, and the
+    public 202/polling workflow are entirely the backend's responsibility. The
+    scanner is stateless: same request in, same findings out.
+
+    The scanner only ever sends passive GET/HEAD requests to the target site,
+    with timeouts and a hard request cap — no payload injection, no active
+    probing.
+
+tags:
+  - name: Scanner
+    description: Scan execution and liveness, called only by the api-service.
+
+servers:
+  - url: http://scanner-service:8080
+    description: Internal container network address; not reachable through the gateway.
+
+security: []
+
+paths:
+  /scan:
+    post:
+      tags: [Scanner]
+      operationId: executeScan
+      summary: Execute a scan and return its findings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanExecutionRequest"
+      responses:
+        "200":
+          description: |
+            Scan finished. `status: Completed` carries findings; `status: Failed`
+            carries an `errorMessage` (e.g. target unreachable). Transport-level
+            errors (scanner down, timeout) surface as connection failures to the
+            caller, not as a response defined here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanExecutionResult"
+        "400":
+          description: Malformed request (invalid URL, unknown check, depth out of range).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /health:
+    get:
+      tags: [Scanner]
+      operationId: getHealth
+      summary: Liveness check for the backend (issue #28)
+      responses:
+        "200":
+          description: Scanner is up and able to accept scan requests.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  schemas:
+    ScanExecutionRequest:
+      type: object
+      required: [url, checks]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Absolute http(s) URL of the site to scan.
+          example: https://my-vibecoded-shop.lovable.app
+        checks:
+          type: array
+          minItems: 1
+          description: Which checks to run in this execution.
+          items:
+            $ref: "#/components/schemas/ScanCheck"
+        crawlDepth:
+          type: integer
+          minimum: 0
+          maximum: 3
+          default: 0
+          description: Link levels to follow from the start URL. 0 scans only the start URL.
+        includeSubdomains:
+          type: boolean
+          default: false
+          description: Whether the crawl may follow links to subdomains of the start host.
+
+    ScanExecutionResult:
+      type: object
+      required: [status, findings, pages]
+      properties:
+        status:
+          type: string
+          description: Outcome of this execution.
+          enum: [Completed, Failed]
+        pages:
+          type: array
+          description: URLs that were actually visited during the scan.
+          items:
+            type: string
+            format: uri
+        findings:
+          type: array
+          description: Discovered issues; empty when the site passed all checks or the scan failed.
+          items:
+            $ref: "#/components/schemas/ScannerFinding"
+        errorMessage:
+          type: string
+          nullable: true
+          description: Why the scan failed; only set when `status` is `Failed`.
+
+    ScannerFinding:
+      type: object
+      description: |
+        A single discovered issue. The backend assigns IDs and persistence
+        concerns; the scanner only reports content (issue #27).
+      required: [check, title, severity, affected, explanation, suggestedFix]
+      properties:
+        check:
+          $ref: "#/components/schemas/ScanCheck"
+        title:
+          type: string
+          example: Missing Content-Security-Policy header
+        severity:
+          $ref: "#/components/schemas/Severity"
+        affected:
+          type: string
+          description: URL, path, or header the finding applies to.
+          example: https://my-vibecoded-shop.lovable.app/
+        explanation:
+          type: string
+          description: Non-technical explanation of the risk, written for vibecoders.
+        suggestedFix:
+          type: string
+          description: Plain-language fix suggestion; input for AI fix-prompt generation.
+
+    ScanCheck:
+      type: string
+      description: Keep in sync with ScanCheck in openapi.yaml.
+      enum: [crawl, https, headers, adminPaths, secrets, sensitiveFiles]
+
+    Severity:
+      type: string
+      description: Keep in sync with Severity in openapi.yaml.
+      enum: [Critical, High, Medium, Low, Info]
+
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: vibeshield-scanner-service
+
+    Error:
+      type: object
+      description: Unified error shape, identical to the public contract.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true

@@ -1,2 +1,4 @@
 dist
 node_modules
+# Generated from api/openapi.yaml — regenerate with `npm run gen:api`, never edit or reformat.
+src/api/schema.ts
