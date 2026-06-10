@@ -54,3 +54,7 @@ Desktop.ini
 # Logs
 *.log
 infra/
+
+# Local self-signed gateway TLS certificates
+gateway/certs/*.key
+gateway/certs/*.crt
