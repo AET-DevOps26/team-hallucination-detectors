@@ -95,6 +95,18 @@ public class ScanService {
                 .toList();
     }
 
+    /**
+     * Finding count for the contract's nullable {@code findingCount} field (#21):
+     * set once a scan completed, null while findings cannot exist yet.
+     */
+    @Transactional(readOnly = true)
+    public Integer findingCountFor(Scan scan) {
+        if (scan.getStatus() != ScanStatus.COMPLETED) {
+            return null;
+        }
+        return (int) findingRepository.countByScanId(scan.getId());
+    }
+
     private void requireOwnedWebsite(AuthenticatedUser user, Long websiteId) {
         websiteRepository.findByIdAndOwnerId(websiteId, user.userId())
                 .orElseThrow(() -> new NotFoundException("WEBSITE_NOT_FOUND", "Website not found."));

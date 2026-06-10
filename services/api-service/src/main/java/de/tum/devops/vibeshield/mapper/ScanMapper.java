@@ -11,7 +11,7 @@ public final class ScanMapper {
     private ScanMapper() {
     }
 
-    public static de.tum.devops.vibeshield.generated.model.Scan toModel(Scan entity) {
+    public static de.tum.devops.vibeshield.generated.model.Scan toModel(Scan entity, Integer findingCount) {
         return new de.tum.devops.vibeshield.generated.model.Scan()
                 .id(entity.getId())
                 .websiteId(entity.getWebsiteId())
@@ -19,8 +19,8 @@ public final class ScanMapper {
                 .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .completedAt(entity.getCompletedAt() == null
                         ? null : entity.getCompletedAt().atOffset(ZoneOffset.UTC))
-                .errorMessage(entity.getErrorMessage());
-        // findingCount stays null until findings can exist (worker + #21 follow-up).
+                .errorMessage(entity.getErrorMessage())
+                .findingCount(findingCount);
     }
 
     public static de.tum.devops.vibeshield.generated.model.Finding toModel(Finding entity) {
