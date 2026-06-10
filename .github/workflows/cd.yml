@@ -37,6 +37,8 @@ jobs:
             context: ./services/auth-service
           - name: langchain-service
             context: ./services/langchain-service
+          - name: scanner-service
+            context: ./services/scanner-service
           - name: client
             context: ./client
 

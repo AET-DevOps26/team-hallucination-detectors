@@ -6,6 +6,7 @@ images:
   authService: ghcr.io/aet-devops26/team-hallucination-detectors-auth-service
   client: ghcr.io/aet-devops26/team-hallucination-detectors-client
   langchainService: ghcr.io/aet-devops26/team-hallucination-detectors-langchain-service
+  scannerService: ghcr.io/aet-devops26/team-hallucination-detectors-scanner-service
   tag: latest
 
 langchainService:
