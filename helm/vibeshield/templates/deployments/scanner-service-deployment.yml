@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scanner-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scanner-service
+  template:
+    metadata:
+      labels:
+        app: scanner-service
+    spec:
+      containers:
+        - name: scanner-service
+          image: "{{ .Values.images.scannerService }}:{{ .Values.images.tag }}"
+          ports:
+            - containerPort: 8080
