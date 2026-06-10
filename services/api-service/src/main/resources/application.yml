@@ -5,6 +5,13 @@ spring:
   application:
     name: api-service
 
+app:
+  jwt:
+    # Shared HMAC secret used to VALIDATE tokens issued by the auth-service —
+    # must be identical in both services (see docs/auth.md). The fallback is a
+    # dev-only placeholder; deployed environments must set APP_JWT_SECRET.
+    secret: ${APP_JWT_SECRET:dev-secret-key-change-me-minimum-32-chars!!}
+
 management:
   endpoints:
     web:
