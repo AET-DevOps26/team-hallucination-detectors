@@ -9,7 +9,7 @@ export type Session = {
   token?: string;
 };
 
-export type AuthMode = "login" | "register" | "reset";
+export type AuthMode = "login" | "register";
 export type Severity = "Critical" | "High" | "Medium" | "Low" | "Info";
 export type FindingStatus = "Open" | "Fixed" | "Ignored";
 

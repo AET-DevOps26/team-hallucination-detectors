@@ -57,13 +57,11 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
         });
         setPassword("");
         navigate("/profile");
-      } else if (authMode === "register") {
+      } else {
         await registerUser(email, password);
         setAuthMessage("Registration successful. You can now log in.");
         setAuthMode("login");
         setPassword("");
-      } else {
-        setAuthMessage(`Password reset instructions prepared for ${email}.`);
       }
     } catch (err: unknown) {
       const error =
