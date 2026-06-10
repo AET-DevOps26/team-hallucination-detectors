@@ -3,8 +3,6 @@ services:
     build:
       context: ./services/api-service
     container_name: vibeshield-api
-    environment:
-      VIBESHIELD_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://135.225.132.161:3000
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s

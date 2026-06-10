@@ -17,6 +17,3 @@ spec:
           image: ghcr.io/aet-devops26/team-hallucination-detectors-api-service:latest
           ports:
             - containerPort: 8080
-          env:
-            - name: VIBESHIELD_CORS_ALLOWED_ORIGINS
-              value: "http://localhost:3000,https://ge65poj.stud.k8s.aet.cit.tum.de"

@@ -55,6 +55,9 @@ Desktop.ini
 *.log
 infra/
 
+# Gradle/IDE build output
+services/*/bin/
+
 # Local self-signed gateway TLS certificates
 gateway/certs/*.key
 gateway/certs/*.crt
