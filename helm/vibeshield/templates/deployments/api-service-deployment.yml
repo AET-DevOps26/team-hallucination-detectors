@@ -17,6 +17,3 @@ spec:
           image: "{{ .Values.images.apiService }}:{{ .Values.images.tag }}"
           ports:
             - containerPort: 8080
-          env:
-            - name: VIBESHIELD_CORS_ALLOWED_ORIGINS
-              value: "{{ .Values.apiService.corsAllowedOrigins }}"

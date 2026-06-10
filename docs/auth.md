@@ -87,7 +87,6 @@ Interactive API docs (when running): `http://localhost:8081/swagger-ui.html`
 | User entity | `model/User.java` |
 | Persistence | `repository/UserRepository.java` |
 | Request/response bodies | `dto/RegisterRequest.java`, `dto/LoginRequest.java`, `dto/AuthResponse.java` |
-| CORS | `config/WebConfig.java` |
 | Error handling | `exception/GlobalExceptionHandler.java` |
 | Entry point | `AuthServiceApplication.java` |
 
@@ -98,7 +97,9 @@ These deviate from the project conventions and are worth tracking:
 - **`application.yml` identity is wrong:** `spring.application.name` is `api-service` and the
   datasource block is copied from the API service. The name should be `auth-service` — it
   labels Prometheus metrics, so fixing it matters for observability.
-- **Hardcoded config:** DB credentials live in `application.yml` and CORS origins are hardcoded
-  in `WebConfig`. These should be externalised to env vars/Secrets.
+- **Hardcoded config:** DB credentials live in `application.yml`. These should be externalised
+  to env vars/Secrets. (CORS config was removed entirely: all traffic reaches the services
+  through the nginx gateway / k8s ingress on a single origin, so cross-origin requests no
+  longer occur.)
 - **Leftover test:** `HelloControllerTest` calls `/api/v1/hello`, which this service does not
   expose; it boots the context but the assertions target the wrong endpoint.
