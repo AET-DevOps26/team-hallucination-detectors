@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const apiBaseURL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
-const authBaseURL = import.meta.env.VITE_AUTH_BASE_URL ?? "http://localhost:8081";
+const apiBaseURL = import.meta.env.VITE_API_BASE_URL ?? "";
+const authBaseURL = import.meta.env.VITE_AUTH_BASE_URL ?? "/auth";
 
 export const apiClient = axios.create({
   baseURL: apiBaseURL,
@@ -77,11 +77,11 @@ export async function fetchHello(): Promise<HelloResponse> {
 }
 
 export async function registerUser(email: string, password: string): Promise<void> {
-  await authClient.post("/api/v1/auth/register", { email, password });
+  await authClient.post("/register", { email, password });
 }
 
 export async function loginUser(email: string, password: string): Promise<AuthResponse> {
-  const { data } = await authClient.post<AuthResponse>("/api/v1/auth/login", {
+  const { data } = await authClient.post<AuthResponse>("/login", {
     email,
     password,
   });
@@ -90,7 +90,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 }
 
 export async function fetchCurrentUser(token: string): Promise<CurrentUserResponse> {
-  const { data } = await authClient.get<CurrentUserResponse>("/api/v1/auth/me", {
+  const { data } = await authClient.get<CurrentUserResponse>("/me", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
