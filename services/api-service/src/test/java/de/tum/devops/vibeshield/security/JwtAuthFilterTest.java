@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(properties = "app.jwt.secret=" + JwtAuthFilterTest.SECRET)
 @AutoConfigureMockMvc
+@org.springframework.test.context.ActiveProfiles("test")
 class JwtAuthFilterTest {
 
     static final String SECRET = "test-secret-that-is-at-least-32-chars!!";

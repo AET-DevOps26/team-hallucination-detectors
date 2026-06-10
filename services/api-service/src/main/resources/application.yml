@@ -4,6 +4,17 @@ server:
 spring:
   application:
     name: api-service
+  datasource:
+    # Defaults target the docker-compose / k8s service name; override per environment.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://database:5432/vibeshield}
+    username: ${SPRING_DATASOURCE_USERNAME:vibeshield}
+    password: ${SPRING_DATASOURCE_PASSWORD:vibeshield}
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate only checks the mapping against it.
+      ddl-auto: validate
+  flyway:
+    enabled: true
 
 app:
   jwt:
