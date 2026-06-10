@@ -19,6 +19,7 @@ export default function App() {
   const analysis = useAnalysisState({
     navigate: router.navigate,
     route: router.route,
+    enabled: Boolean(auth.session),
   });
   const team = useTeamState();
   const isAuthenticated = Boolean(auth.session);
