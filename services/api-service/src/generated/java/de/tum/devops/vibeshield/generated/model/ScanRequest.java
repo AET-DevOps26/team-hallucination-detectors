@@ -47,11 +47,11 @@ public class ScanRequest {
   }
 
   /**
-   * Checks to run; defaults to all available checks.
+   * Checks to run; an empty or absent list runs all available checks.
    * @return checks
    */
-  @Valid @Size(min = 1) 
-  @Schema(name = "checks", description = "Checks to run; defaults to all available checks.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @Valid 
+  @Schema(name = "checks", description = "Checks to run; an empty or absent list runs all available checks.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("checks")
   public List<ScanCheck> getChecks() {
     return checks;

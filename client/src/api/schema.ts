@@ -237,7 +237,7 @@ export interface components {
         };
         /** @description Configuration for a scan run. All fields are optional. */
         ScanRequest: {
-            /** @description Checks to run; defaults to all available checks. */
+            /** @description Checks to run; an empty or absent list runs all available checks. */
             checks?: components["schemas"]["ScanCheck"][];
             /**
              * @description How many link levels to follow from the start URL. 0 scans only the registered URL.
@@ -539,8 +539,8 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description Optional scan configuration; omitting it runs all checks with defaults. */
-        requestBody?: {
+        /** @description Scan configuration; send `{}` to run all checks with defaults. */
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["ScanRequest"];
             };

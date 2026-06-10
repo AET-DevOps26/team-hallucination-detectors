@@ -171,8 +171,8 @@ paths:
         happens in the background. At most one scan per website may be
         `Pending` or `Running` at a time — a second trigger returns `409`.
       requestBody:
-        required: false
-        description: Optional scan configuration; omitting it runs all checks with defaults.
+        required: true
+        description: Scan configuration; send `{}` to run all checks with defaults.
         content:
           application/json:
             schema:
@@ -432,8 +432,7 @@ components:
       properties:
         checks:
           type: array
-          description: Checks to run; defaults to all available checks.
-          minItems: 1
+          description: Checks to run; an empty or absent list runs all available checks.
           items:
             $ref: "#/components/schemas/ScanCheck"
         crawlDepth:
