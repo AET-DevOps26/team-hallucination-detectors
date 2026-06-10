@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langchain-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langchain-service
+  template:
+    metadata:
+      labels:
+        app: langchain-service
+    spec:
+      containers:
+        - name: langchain-service
+          image: ghcr.io/aet-devops26/team-hallucination-detectors-langchain-service:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODEL_NAME
+              value: "gpt-4o-mini"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: OPENAI_API_KEY

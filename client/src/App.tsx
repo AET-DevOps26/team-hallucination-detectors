@@ -140,8 +140,6 @@ function LoginRoute({ auth }: { auth: ReturnType<typeof useAuthState> }) {
       password={auth.password}
       setEmail={auth.setEmail}
       setPassword={auth.setPassword}
-      setUsername={auth.setUsername}
-      username={auth.username}
     />
   );
 }

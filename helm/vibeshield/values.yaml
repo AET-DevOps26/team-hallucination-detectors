@@ -1,0 +1,21 @@
+global:
+  host: ge65poj.stud.k8s.aet.cit.tum.de
+
+images:
+  apiService: ghcr.io/aet-devops26/team-hallucination-detectors-api-service
+  authService: ghcr.io/aet-devops26/team-hallucination-detectors-auth-service
+  client: ghcr.io/aet-devops26/team-hallucination-detectors-client
+  langchainService: ghcr.io/aet-devops26/team-hallucination-detectors-langchain-service
+  tag: latest
+
+apiService:
+  corsAllowedOrigins: "http://localhost:3000,https://ge65poj.stud.k8s.aet.cit.tum.de"
+
+langchainService:
+  modelName: "gpt-4o-mini"
+
+database:
+  name: vibeshield
+  user: vibeshield
+  password: vibeshield
+  storage: 1Gi

@@ -13,8 +13,6 @@ type LoginPageProps = {
   password: string;
   setEmail: (value: string) => void;
   setPassword: (value: string) => void;
-  setUsername: (value: string) => void;
-  username: string;
 };
 
 export function LoginPage({
@@ -28,8 +26,6 @@ export function LoginPage({
   password,
   setEmail,
   setPassword,
-  setUsername,
-  username,
 }: LoginPageProps) {
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-6">
@@ -51,12 +47,7 @@ export function LoginPage({
         </div>
 
         <form className="mt-5 space-y-4" onSubmit={onAuthSubmit}>
-          {authMode !== "reset" && (
-            <TextField autoComplete="username" label="Username" onChange={setUsername} required type="text" value={username} />
-          )}
-          {(authMode === "register" || authMode === "reset") && (
-            <TextField autoComplete="email" label="Email" onChange={setEmail} required type="email" value={email} />
-          )}
+          <TextField autoComplete="email" label="Email" onChange={setEmail} required type="email" value={email} />
           {authMode !== "reset" && (
             <TextField autoComplete={authMode === "login" ? "current-password" : "new-password"} label="Password" onChange={setPassword} required type="password" value={password} />
           )}

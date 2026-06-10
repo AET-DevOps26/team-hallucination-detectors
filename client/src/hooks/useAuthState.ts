@@ -1,5 +1,6 @@
-import { FormEvent, useMemo, useState } from "react";
-import { login, LoginResult } from "../api/client";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { fetchCurrentUser, loginUser, registerUser } from "../api/client";
+import { devAuthenticated } from "../constants/auth";
 import { AuthMode, Session } from "../types/domain";
 import { clearSession, maskToken, readStoredSession, storeSession } from "../utils/session";
 
@@ -7,16 +8,33 @@ type UseAuthStateOptions = {
   navigate: (path: string) => void;
 };
 
+/** Display name shown in the navbar/profile; the backend identifies users by email. */
+function usernameFromEmail(email: string): string {
+  return email.split("@")[0] || email;
+}
+
 export function useAuthState({ navigate }: UseAuthStateOptions) {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [session, setSession] = useState<Session | null>(readStoredSession);
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
   const [authStatus, setAuthStatus] = useState<"idle" | "loading">("idle");
   const maskedToken = useMemo(() => maskToken(session?.token), [session]);
+
+  // Validate the stored token against the auth service on mount; drop stale sessions.
+  useEffect(() => {
+    if (devAuthenticated) return;
+
+    const stored = readStoredSession();
+    if (!stored?.token) return;
+
+    fetchCurrentUser(stored.token).catch(() => {
+      clearSession();
+      setSession(null);
+    });
+  }, []);
 
   function persistSession(nextSession: Session) {
     storeSession(nextSession);
@@ -31,21 +49,22 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
 
     try {
       if (authMode === "login") {
-        const result: LoginResult = await login({ username, password });
+        const response = await loginUser(email, password);
         persistSession({
-          username: result.username,
-          email: email || `${result.username}@example.com`,
-          token: result.token,
+          username: usernameFromEmail(response.email),
+          email: response.email,
+          token: response.token,
         });
+        setPassword("");
+        navigate("/profile");
       } else if (authMode === "register") {
-        persistSession({ username, email });
-        setAuthMessage("Account created locally.");
+        await registerUser(email, password);
+        setAuthMessage("Registration successful. You can now log in.");
+        setAuthMode("login");
+        setPassword("");
       } else {
         setAuthMessage(`Password reset instructions prepared for ${email}.`);
-        return;
       }
-      setPassword("");
-      navigate("/profile");
     } catch (err: unknown) {
       const error =
         err instanceof Error
@@ -60,7 +79,6 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
   function handleLogout() {
     clearSession();
     setSession(null);
-    setUsername("");
     setEmail("");
     setPassword("");
     setAuthError("");
@@ -82,7 +100,5 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
     setAuthMode,
     setEmail,
     setPassword,
-    setUsername,
-    username,
   };
 }
