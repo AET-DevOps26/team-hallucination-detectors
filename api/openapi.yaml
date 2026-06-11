@@ -44,6 +44,21 @@ security:
   - bearerAuth: []
 
 paths:
+  /api/v1/auth/health:
+    get:
+      tags: [Auth]
+      operationId: getAuthHealth
+      summary: Check auth service liveness
+      security: []
+      responses:
+        "200":
+          description: Auth service is running.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Auth service running
+
   /api/v1/auth/register:
     post:
       tags: [Auth]
@@ -433,19 +448,16 @@ components:
         checks:
           type: array
           description: Checks to run; defaults to all available checks.
-          minItems: 1
           items:
             $ref: "#/components/schemas/ScanCheck"
         crawlDepth:
           type: integer
           minimum: 0
           maximum: 3
-          default: 0
-          description: How many link levels to follow from the start URL. 0 scans only the registered URL.
+          description: How many link levels to follow from the start URL. Defaults to 0, which scans only the registered URL.
         includeSubdomains:
           type: boolean
-          default: false
-          description: Whether the crawl may follow links to subdomains of the registered host.
+          description: Whether the crawl may follow links to subdomains of the registered host. Defaults to false.
 
     Scan:
       type: object
