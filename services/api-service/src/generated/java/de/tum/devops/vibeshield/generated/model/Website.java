@@ -77,7 +77,7 @@ public class Website {
    * @return url
    */
   @NotNull @Valid 
-  @Schema(name = "url", example = "https://my-vibecoded-shop.lovable.app", requiredMode = Schema.RequiredMode.REQUIRED)
+  @Schema(name = "url", example = "https://my-vibecoded-shop.lovable.app", maxLength = 2048, requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("url")
   public URI getUrl() {
     return url;
@@ -97,7 +97,8 @@ public class Website {
    * @return name
    */
   @NotNull 
-  @Schema(name = "name", example = "My shop", description = "Display name; defaults to the URL host when not provided.", requiredMode = Schema.RequiredMode.REQUIRED)
+  @Size(max = 255) 
+  @Schema(name = "name", example = "My shop", maxLength = 255, description = "Display name; defaults to the URL host when not provided.", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("name")
   public String getName() {
     return name;
@@ -170,4 +171,3 @@ public class Website {
     return o.toString().replace("\n", "\n    ");
   }
 }
-

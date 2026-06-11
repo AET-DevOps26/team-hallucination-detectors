@@ -404,9 +404,11 @@ components:
         url:
           type: string
           format: uri
+          maxLength: 2048
           example: https://my-vibecoded-shop.lovable.app
         name:
           type: string
+          maxLength: 255
           description: Display name; defaults to the URL host when not provided.
           example: My shop
         createdAt:
@@ -420,10 +422,12 @@ components:
         url:
           type: string
           format: uri
+          maxLength: 2048
           description: Must be an absolute http(s) URL.
           example: https://my-vibecoded-shop.lovable.app
         name:
           type: string
+          maxLength: 255
           description: Optional display name; defaults to the URL host.
 
     ScanRequest:
