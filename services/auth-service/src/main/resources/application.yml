@@ -3,15 +3,21 @@ server:
 
 spring:
   application:
-    name: api-service
+    name: auth-service
   datasource:
-    url: jdbc:postgresql://database:5432/vibeshield
+    url: jdbc:postgresql://database:5432/vibeshield?currentSchema=auth_service
     username: vibeshield
     password: vibeshield
+  flyway:
+    default-schema: auth_service
+    schemas: auth_service
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: auth_service
 
 management:
   endpoints:
