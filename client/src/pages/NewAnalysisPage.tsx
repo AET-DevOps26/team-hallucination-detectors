@@ -4,7 +4,7 @@ import { scanLabels } from "../constants/scans";
 import { NewAnalysisInput, ScanOption, Site } from "../types/domain";
 
 type NewAnalysisPageProps = {
-  createAnalysis: (input: NewAnalysisInput) => void;
+  createAnalysis: (input: NewAnalysisInput) => Promise<void>;
   navigate: (path: string) => void;
   sites: Site[];
 };
@@ -15,14 +15,16 @@ export function NewAnalysisPage({
   sites,
 }: NewAnalysisPageProps) {
   const [url, setUrl] = useState(sites[0]?.url ?? "");
-  const [crawlDepth, setCrawlDepth] = useState(2);
+  // Contract bounds: crawlDepth 0–3, 0 = only the entered URL.
+  const [crawlDepth, setCrawlDepth] = useState(0);
   const [includeSubdomains, setIncludeSubdomains] = useState(false);
   const [selectedScans, setSelectedScans] = useState<ScanOption[]>([
-    "crawl",
     "https",
     "headers",
+    "sensitiveFiles",
   ]);
   const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function toggleScan(scan: ScanOption) {
     setSelectedScans((current) =>
@@ -32,28 +34,42 @@ export function NewAnalysisPage({
     );
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
 
+    let parsed: URL;
     try {
-      const parsed = new URL(url);
-      if (!["http:", "https:"].includes(parsed.protocol)) {
-        setFormError("Enter a valid http or https URL.");
-        return;
-      }
-      if (selectedScans.length === 0) {
-        setFormError("Choose at least one scan.");
-        return;
-      }
-      createAnalysis({
+      parsed = new URL(url);
+    } catch {
+      setFormError("Enter a valid URL.");
+      return;
+    }
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      setFormError("Enter a valid http or https URL.");
+      return;
+    }
+    if (selectedScans.length === 0) {
+      setFormError("Choose at least one scan.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createAnalysis({
         url: parsed.toString().replace(/\/$/, ""),
         selectedScans,
         crawlDepth,
         includeSubdomains,
       });
-    } catch {
-      setFormError("Enter a valid URL.");
+    } catch (error) {
+      // Surfaces backend rejections, e.g. "A scan for this website is already
+      // pending or running." (409) — the duplicate-trigger guard of #11.
+      setFormError(
+        error instanceof Error ? error.message : "Starting the analysis failed.",
+      );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -79,8 +95,8 @@ export function NewAnalysisPage({
             </p>
           )}
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button className="rounded-md bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800" type="submit">
-              Start analysis
+            <button className="rounded-md bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60" disabled={submitting} type="submit">
+              {submitting ? "Starting…" : "Start analysis"}
             </button>
             <button className="rounded-md border border-zinc-300 px-4 py-3 font-semibold text-zinc-700 hover:border-teal-500" onClick={() => navigate("/analysis")} type="button">
               Cancel
@@ -157,7 +173,7 @@ function ScopeControls({
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="block">
         <span className="text-sm font-medium text-zinc-700">Crawl depth</span>
-        <input className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-3 text-base outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100" max={5} min={1} onChange={(event) => setCrawlDepth(Number(event.target.value))} type="number" value={crawlDepth} />
+        <input className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-3 text-base outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100" max={3} min={0} onChange={(event) => setCrawlDepth(Number(event.target.value))} type="number" value={crawlDepth} />
       </label>
       <label className="flex items-center gap-3 rounded-md border border-zinc-200 p-3">
         <input checked={includeSubdomains} onChange={(event) => setIncludeSubdomains(event.target.checked)} type="checkbox" />

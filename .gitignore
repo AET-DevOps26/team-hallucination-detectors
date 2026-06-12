@@ -61,3 +61,6 @@ services/*/bin/
 # Local self-signed gateway TLS certificates
 gateway/certs/*.key
 gateway/certs/*.crt
+
+# TypeScript incremental build state
+*.tsbuildinfo

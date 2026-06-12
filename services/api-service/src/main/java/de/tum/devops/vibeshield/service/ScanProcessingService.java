@@ -37,13 +37,29 @@ public class ScanProcessingService {
         return scanRepository.findFirstByStatusOrderByCreatedAtAscIdAsc(ScanStatus.PENDING);
     }
 
+    /** Message shown to the user when a scan is recovered after its worker died mid-run. */
+    static final String STALE_RUNNING_MESSAGE =
+            "The scan did not finish in time and was stopped. Please run it again.";
+
     /**
-     * Atomically claims a scan (Pending → Running). Returns false when another
-     * worker instance won the race — the status guard in the update is the lock.
+     * Atomically claims a scan (Pending → Running) and stamps when it was claimed.
+     * Returns false when another worker instance won the race — the status guard in
+     * the update is the lock.
      */
     @Transactional
     public boolean claim(Long scanId) {
-        return scanRepository.transitionStatus(scanId, ScanStatus.PENDING, ScanStatus.RUNNING) == 1;
+        return scanRepository.claim(scanId, ScanStatus.PENDING, ScanStatus.RUNNING, Instant.now()) == 1;
+    }
+
+    /**
+     * Fails scans stuck Running since before {@code cutoff} — their worker claimed
+     * them and then died before completing. Gives the user a terminal state with a
+     * reason instead of a spinner that never resolves. Returns the number recovered.
+     */
+    @Transactional
+    public int failStaleRunning(Instant cutoff) {
+        return scanRepository.failStaleRunning(
+                ScanStatus.RUNNING, ScanStatus.FAILED, Instant.now(), cutoff, STALE_RUNNING_MESSAGE);
     }
 
     /** Persists the findings and completes the scan (issues #19, #20). */

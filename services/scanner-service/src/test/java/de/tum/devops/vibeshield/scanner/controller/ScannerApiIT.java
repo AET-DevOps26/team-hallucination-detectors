@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,8 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * End-to-end: the real HTTP stack scans a real (embedded JDK) web server that
  * deliberately misses security headers and exposes an .env file. Exercises the
  * contract endpoint, the fetcher, and the checks together — no mocks.
+ *
+ * <p>The embedded server lives on 127.0.0.1, so the SSRF guard's loopback rule is
+ * relaxed for this test only (it stays strict in every deployed environment).
  */
-@SpringBootTest
+@SpringBootTest(properties = "scanner.ssrf.allow-loopback=true")
 @AutoConfigureMockMvc
 class ScannerApiIT {
 
@@ -116,6 +120,18 @@ class ScannerApiIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("Failed"))
                 .andExpect(jsonPath("$.errorMessage").isNotEmpty());
+    }
+
+    @Test
+    void scan_ofPrivateAddress_isRefusedAsFailed() throws Exception {
+        mockMvc.perform(post("/scan")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        // RFC 1918 private range — the SSRF guard must refuse it, even
+                        // though loopback is relaxed for this test.
+                        .content("{\"url\": \"http://10.255.255.1/\", \"checks\": [\"headers\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("Failed"))
+                .andExpect(jsonPath("$.errorMessage", containsString("not allowed to reach")));
     }
 
     @Test

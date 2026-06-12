@@ -11,6 +11,7 @@ import de.tum.devops.vibeshield.repository.FindingRepository;
 import de.tum.devops.vibeshield.repository.ScanRepository;
 import de.tum.devops.vibeshield.repository.WebsiteRepository;
 import de.tum.devops.vibeshield.security.AuthenticatedUser;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,8 +48,7 @@ public class ScanService {
     public Scan trigger(AuthenticatedUser user, Long websiteId, ScanRequest request) {
         requireOwnedWebsite(user, websiteId);
         if (scanRepository.existsByWebsiteIdAndStatusIn(websiteId, IN_FLIGHT)) {
-            throw new ConflictException("SCAN_IN_PROGRESS",
-                    "A scan for this website is already pending or running.");
+            throw scanInProgress();
         }
 
         List<ScanCheck> checks = (request == null || request.getChecks() == null
@@ -58,8 +58,12 @@ public class ScanService {
         int crawlDepth = (request == null || request.getCrawlDepth() == null) ? 0 : request.getCrawlDepth();
         boolean includeSubdomains = request != null && Boolean.TRUE.equals(request.getIncludeSubdomains());
 
-        return scanRepository.save(
-                new Scan(websiteId, checks, crawlDepth, includeSubdomains, Instant.now()));
+        try {
+            return scanRepository.saveAndFlush(
+                    new Scan(websiteId, checks, crawlDepth, includeSubdomains, Instant.now()));
+        } catch (DataIntegrityViolationException exception) {
+            throw scanInProgress();
+        }
     }
 
     /** Current scan state for polling (issue #18). */
@@ -110,6 +114,11 @@ public class ScanService {
     private void requireOwnedWebsite(AuthenticatedUser user, Long websiteId) {
         websiteRepository.findByIdAndOwnerId(websiteId, user.userId())
                 .orElseThrow(() -> new NotFoundException("WEBSITE_NOT_FOUND", "Website not found."));
+    }
+
+    private ConflictException scanInProgress() {
+        return new ConflictException("SCAN_IN_PROGRESS",
+                "A scan for this website is already pending or running.");
     }
 
     private Scan requireOwnedScan(AuthenticatedUser user, Long scanId) {

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.List;
@@ -54,7 +55,7 @@ class ScanServiceTest {
     void trigger_createsPendingScanWithAllChecksByDefault() {
         when(websiteRepository.findByIdAndOwnerId(1L, 7L)).thenReturn(Optional.of(WEBSITE));
         when(scanRepository.existsByWebsiteIdAndStatusIn(eq(1L), anyCollection())).thenReturn(false);
-        when(scanRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(scanRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         Scan scan = service.trigger(USER, 1L, null);
 
@@ -62,13 +63,14 @@ class ScanServiceTest {
         assertThat(scan.getRequestedChecks()).containsExactly(ScanCheck.values());
         assertThat(scan.getCrawlDepth()).isZero();
         assertThat(scan.isIncludeSubdomains()).isFalse();
+        assertThat(scan.getInFlightWebsiteId()).isEqualTo(1L);
     }
 
     @Test
     void trigger_respectsExplicitScanConfiguration() {
         when(websiteRepository.findByIdAndOwnerId(1L, 7L)).thenReturn(Optional.of(WEBSITE));
         when(scanRepository.existsByWebsiteIdAndStatusIn(eq(1L), anyCollection())).thenReturn(false);
-        when(scanRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(scanRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ScanRequest request = new ScanRequest()
                 .checks(List.of(ScanCheck.HTTPS, ScanCheck.HEADERS))
@@ -79,6 +81,7 @@ class ScanServiceTest {
         assertThat(scan.getRequestedChecks()).containsExactly(ScanCheck.HTTPS, ScanCheck.HEADERS);
         assertThat(scan.getCrawlDepth()).isEqualTo(2);
         assertThat(scan.isIncludeSubdomains()).isTrue();
+        assertThat(scan.getInFlightWebsiteId()).isEqualTo(1L);
     }
 
     @Test
@@ -88,6 +91,17 @@ class ScanServiceTest {
 
         assertThatThrownBy(() -> service.trigger(USER, 1L, null))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void trigger_mapsInFlightUniqueConstraintRaceToConflict() {
+        when(websiteRepository.findByIdAndOwnerId(1L, 7L)).thenReturn(Optional.of(WEBSITE));
+        when(scanRepository.existsByWebsiteIdAndStatusIn(eq(1L), anyCollection())).thenReturn(false);
+        when(scanRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        assertThatThrownBy(() -> service.trigger(USER, 1L, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("already pending or running");
     }
 
     @Test

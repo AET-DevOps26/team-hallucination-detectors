@@ -94,14 +94,16 @@ class ScanApiIT {
     }
 
     @Test
-    void triggerScan_withoutBody_returns400ValidationError() throws Exception {
+    void triggerScan_withoutBody_usesDefaults() throws Exception {
         long websiteId = registerWebsite(OWNER, "https://shop.example.org");
 
+        // The scan body is optional in the contract: omitting it entirely runs all
+        // checks with defaults, exactly like sending an empty {} object.
         mockMvc.perform(post("/api/v1/websites/" + websiteId + "/scans")
                         .header("Authorization", OWNER)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("Pending"));
     }
 
     @Test

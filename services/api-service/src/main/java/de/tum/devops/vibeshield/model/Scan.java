@@ -48,11 +48,17 @@ public class Scan {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "started_at")
+    private Instant startedAt;
+
     @Column(name = "completed_at")
     private Instant completedAt;
 
     @Column(name = "error_message", length = 2048)
     private String errorMessage;
+
+    @Column(name = "in_flight_website_id")
+    private Long inFlightWebsiteId;
 
     protected Scan() {
         // JPA only
@@ -66,6 +72,7 @@ public class Scan {
         this.crawlDepth = crawlDepth;
         this.includeSubdomains = includeSubdomains;
         this.createdAt = createdAt;
+        this.inFlightWebsiteId = websiteId;
     }
 
     public Long getId() {
@@ -96,6 +103,10 @@ public class Scan {
         return createdAt;
     }
 
+    public Instant getStartedAt() {
+        return startedAt;
+    }
+
     public Instant getCompletedAt() {
         return completedAt;
     }
@@ -104,10 +115,21 @@ public class Scan {
         return errorMessage;
     }
 
+    public Long getInFlightWebsiteId() {
+        return inFlightWebsiteId;
+    }
+
+    /** Worker transition: the scan was picked up for execution. */
+    public void markRunning() {
+        this.status = ScanStatus.RUNNING;
+        this.inFlightWebsiteId = websiteId;
+    }
+
     /** Worker transition: the scan finished and its findings are persisted. */
     public void markCompleted(Instant completedAt) {
         this.status = ScanStatus.COMPLETED;
         this.completedAt = completedAt;
+        this.inFlightWebsiteId = null;
     }
 
     /** Worker transition: the scan could not be executed; the reason is kept for the user. */
@@ -115,5 +137,6 @@ public class Scan {
         this.status = ScanStatus.FAILED;
         this.completedAt = completedAt;
         this.errorMessage = errorMessage;
+        this.inFlightWebsiteId = null;
     }
 }

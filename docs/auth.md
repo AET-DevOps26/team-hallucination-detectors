@@ -2,7 +2,8 @@
 
 Spring Boot microservice that handles user identity for VibeShield: registration, login,
 and current-user lookup. It issues HMAC-signed JWTs that other services can validate, and
-stores users in the shared PostgreSQL database.
+stores users in the shared PostgreSQL database under the service-owned `auth_service`
+schema.
 
 > **Note:** The MVP uses this self-contained JWT service rather than Keycloak. If the team
 > later adopts Keycloak/OIDC, this service is the seam that would be replaced.
@@ -12,7 +13,8 @@ stores users in the shared PostgreSQL database.
 | | |
 |---|---|
 | Framework | Spring Boot 3.3.4, Java 21 (Gradle Kotlin DSL) |
-| Persistence | Spring Data JPA → PostgreSQL 16 (`users` table) |
+| Persistence | Spring Data JPA → PostgreSQL 16 (`auth_service.users` table) |
+| Migrations | Flyway versioned SQL migrations in `src/main/resources/db/migration` |
 | Passwords | BCrypt (`spring-security-crypto`) |
 | Tokens | JWT via `jjwt` 0.12.6, HMAC-signed |
 | Docs | springdoc OpenAPI → Swagger UI |
@@ -55,13 +57,18 @@ Interactive API docs (when running): `http://localhost:8081/swagger-ui.html`
 
 ## Data model
 
-`users` table (Hibernate `ddl-auto: update`):
+`auth_service.users` table, created by Flyway migration `V1__create_auth_users.sql`.
+Hibernate runs with `ddl-auto: validate` so schema drift fails startup instead of changing
+the database at runtime.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `bigint` | PK, identity |
 | `email` | `varchar` | unique — login identifier |
 | `password` | `varchar` | BCrypt hash (never the plaintext) |
+
+The auth service owns only the `auth_service` schema. Migrations must not create foreign
+keys to other service schemas.
 
 ## JWT
 
