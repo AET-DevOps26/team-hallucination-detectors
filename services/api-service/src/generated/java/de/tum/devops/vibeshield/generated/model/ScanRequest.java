@@ -29,9 +29,9 @@ public class ScanRequest {
   @Valid
   private List<ScanCheck> checks = new ArrayList<>();
 
-  private Integer crawlDepth = 0;
+  private @Nullable Integer crawlDepth;
 
-  private Boolean includeSubdomains = false;
+  private @Nullable Boolean includeSubdomains;
 
   public ScanRequest checks(List<ScanCheck> checks) {
     this.checks = checks;
@@ -47,11 +47,11 @@ public class ScanRequest {
   }
 
   /**
-   * Checks to run; an empty or absent list runs all available checks.
+   * Checks to run; defaults to all available checks.
    * @return checks
    */
   @Valid 
-  @Schema(name = "checks", description = "Checks to run; an empty or absent list runs all available checks.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @Schema(name = "checks", description = "Checks to run; defaults to all available checks.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("checks")
   public List<ScanCheck> getChecks() {
     return checks;
@@ -61,45 +61,45 @@ public class ScanRequest {
     this.checks = checks;
   }
 
-  public ScanRequest crawlDepth(Integer crawlDepth) {
+  public ScanRequest crawlDepth(@Nullable Integer crawlDepth) {
     this.crawlDepth = crawlDepth;
     return this;
   }
 
   /**
-   * How many link levels to follow from the start URL. 0 scans only the registered URL.
+   * How many link levels to follow from the start URL. Defaults to 0, which scans only the registered URL.
    * minimum: 0
    * maximum: 3
    * @return crawlDepth
    */
   @Min(0) @Max(3) 
-  @Schema(name = "crawlDepth", description = "How many link levels to follow from the start URL. 0 scans only the registered URL.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @Schema(name = "crawlDepth", description = "How many link levels to follow from the start URL. Defaults to 0, which scans only the registered URL.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("crawlDepth")
-  public Integer getCrawlDepth() {
+  public @Nullable Integer getCrawlDepth() {
     return crawlDepth;
   }
 
-  public void setCrawlDepth(Integer crawlDepth) {
+  public void setCrawlDepth(@Nullable Integer crawlDepth) {
     this.crawlDepth = crawlDepth;
   }
 
-  public ScanRequest includeSubdomains(Boolean includeSubdomains) {
+  public ScanRequest includeSubdomains(@Nullable Boolean includeSubdomains) {
     this.includeSubdomains = includeSubdomains;
     return this;
   }
 
   /**
-   * Whether the crawl may follow links to subdomains of the registered host.
+   * Whether the crawl may follow links to subdomains of the registered host. Defaults to false.
    * @return includeSubdomains
    */
   
-  @Schema(name = "includeSubdomains", description = "Whether the crawl may follow links to subdomains of the registered host.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @Schema(name = "includeSubdomains", description = "Whether the crawl may follow links to subdomains of the registered host. Defaults to false.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("includeSubdomains")
-  public Boolean getIncludeSubdomains() {
+  public @Nullable Boolean getIncludeSubdomains() {
     return includeSubdomains;
   }
 
-  public void setIncludeSubdomains(Boolean includeSubdomains) {
+  public void setIncludeSubdomains(@Nullable Boolean includeSubdomains) {
     this.includeSubdomains = includeSubdomains;
   }
 

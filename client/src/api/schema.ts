@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/auth/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check auth service liveness */
+        get: operations["getAuthHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/register": {
         parameters: {
             query?: never;
@@ -237,18 +254,12 @@ export interface components {
         };
         /** @description Configuration for a scan run. All fields are optional. */
         ScanRequest: {
-            /** @description Checks to run; an empty or absent list runs all available checks. */
+            /** @description Checks to run; defaults to all available checks. */
             checks?: components["schemas"]["ScanCheck"][];
-            /**
-             * @description How many link levels to follow from the start URL. 0 scans only the registered URL.
-             * @default 0
-             */
-            crawlDepth: number;
-            /**
-             * @description Whether the crawl may follow links to subdomains of the registered host.
-             * @default false
-             */
-            includeSubdomains: boolean;
+            /** @description How many link levels to follow from the start URL. Defaults to 0, which scans only the registered URL. */
+            crawlDepth?: number;
+            /** @description Whether the crawl may follow links to subdomains of the registered host. Defaults to false. */
+            includeSubdomains?: boolean;
         };
         /** @description A scan job and its current state. */
         Scan: {
@@ -353,6 +364,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getAuthHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Auth service is running. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
     registerUser: {
         parameters: {
             query?: never;
@@ -539,8 +570,8 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description Scan configuration; send `{}` to run all checks with defaults. */
-        requestBody: {
+        /** @description Optional scan configuration; omitting it runs all checks with defaults. */
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["ScanRequest"];
             };

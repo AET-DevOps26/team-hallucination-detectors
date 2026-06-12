@@ -44,6 +44,21 @@ security:
   - bearerAuth: []
 
 paths:
+  /api/v1/auth/health:
+    get:
+      tags: [Auth]
+      operationId: getAuthHealth
+      summary: Check auth service liveness
+      security: []
+      responses:
+        "200":
+          description: Auth service is running.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Auth service running
+
   /api/v1/auth/register:
     post:
       tags: [Auth]
@@ -171,8 +186,8 @@ paths:
         happens in the background. At most one scan per website may be
         `Pending` or `Running` at a time — a second trigger returns `409`.
       requestBody:
-        required: true
-        description: Scan configuration; send `{}` to run all checks with defaults.
+        required: false
+        description: Optional scan configuration; omitting it runs all checks with defaults.
         content:
           application/json:
             schema:
@@ -404,9 +419,11 @@ components:
         url:
           type: string
           format: uri
+          maxLength: 2048
           example: https://my-vibecoded-shop.lovable.app
         name:
           type: string
+          maxLength: 255
           description: Display name; defaults to the URL host when not provided.
           example: My shop
         createdAt:
@@ -420,10 +437,12 @@ components:
         url:
           type: string
           format: uri
+          maxLength: 2048
           description: Must be an absolute http(s) URL.
           example: https://my-vibecoded-shop.lovable.app
         name:
           type: string
+          maxLength: 255
           description: Optional display name; defaults to the URL host.
 
     ScanRequest:
@@ -432,19 +451,17 @@ components:
       properties:
         checks:
           type: array
-          description: Checks to run; an empty or absent list runs all available checks.
+          description: Checks to run; defaults to all available checks.
           items:
             $ref: "#/components/schemas/ScanCheck"
         crawlDepth:
           type: integer
           minimum: 0
           maximum: 3
-          default: 0
-          description: How many link levels to follow from the start URL. 0 scans only the registered URL.
+          description: How many link levels to follow from the start URL. Defaults to 0, which scans only the registered URL.
         includeSubdomains:
           type: boolean
-          default: false
-          description: Whether the crawl may follow links to subdomains of the registered host.
+          description: Whether the crawl may follow links to subdomains of the registered host. Defaults to false.
 
     Scan:
       type: object
