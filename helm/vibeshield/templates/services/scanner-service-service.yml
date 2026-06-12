@@ -1,0 +1,15 @@
+# Internal-only: the scanner is reached exclusively by the api-service as
+# http://scanner-service:8080 (same address as in docker-compose). It is
+# deliberately NOT routed by the ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: scanner-service
+spec:
+  type: ClusterIP
+  selector:
+    app: scanner-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

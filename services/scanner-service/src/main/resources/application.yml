@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: scanner-service
+
+# Scan etiquette: the scanner stays passive and bounded. Timeout per request,
+# a hard request budget per scan, and an honest User-Agent.
+scanner:
+  timeout-ms: ${SCANNER_TIMEOUT_MS:5000}
+  request-budget: ${SCANNER_REQUEST_BUDGET:25}
+  user-agent: ${SCANNER_USER_AGENT:VibeShield-Scanner/1.0}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
