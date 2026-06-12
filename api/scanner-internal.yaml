@@ -107,12 +107,20 @@ components:
 
     ScanExecutionResult:
       type: object
-      required: [status, findings, pages]
+      required: [status, findings, pages, executedChecks]
       properties:
         status:
           type: string
           description: Outcome of this execution.
           enum: [Completed, Failed]
+        executedChecks:
+          type: array
+          description: |
+            Checks that were actually executed. May be a subset of the requested
+            checks while some check types are not yet implemented — callers must
+            not assume a requested check ran unless it appears here.
+          items:
+            $ref: "#/components/schemas/ScanCheck"
         pages:
           type: array
           description: URLs that were actually visited during the scan.

@@ -203,7 +203,7 @@ public interface ScansApi {
      * Creates the scan in status &#x60;Pending&#x60; and returns immediately; execution happens in the background. At most one scan per website may be &#x60;Pending&#x60; or &#x60;Running&#x60; at a time — a second trigger returns &#x60;409&#x60;. 
      *
      * @param websiteId ID of a website registered by the authenticated user. (required)
-     * @param scanRequest Scan configuration; send &#x60;{}&#x60; to run all checks with defaults. (required)
+     * @param scanRequest Optional scan configuration; omitting it runs all checks with defaults. (optional)
      * @return Scan accepted for background execution. (status code 202)
      *         or Missing, expired, or invalid Bearer token (&#x60;UNAUTHORIZED&#x60;, &#x60;INVALID_TOKEN&#x60;). (status code 401)
      *         or Resource does not exist or belongs to another user (&#x60;WEBSITE_NOT_FOUND&#x60;, &#x60;SCAN_NOT_FOUND&#x60;). (status code 404)
@@ -241,7 +241,7 @@ public interface ScansApi {
     
     ResponseEntity<Scan> triggerScan(
         @Parameter(name = "websiteId", description = "ID of a website registered by the authenticated user.", required = true, in = ParameterIn.PATH) @PathVariable("websiteId") Long websiteId,
-        @Parameter(name = "ScanRequest", description = "Scan configuration; send `{}` to run all checks with defaults.", required = true) @Valid @RequestBody ScanRequest scanRequest
+        @Parameter(name = "ScanRequest", description = "Optional scan configuration; omitting it runs all checks with defaults.") @Valid @RequestBody(required = false) @Nullable ScanRequest scanRequest
     );
 
 }

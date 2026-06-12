@@ -60,8 +60,9 @@ jobs:
 
       - name: Fail if generated code drifts from the spec
         run: |
-          git add -A client/src/api/schema.ts services/api-service/src/generated
-          if ! git diff --cached --exit-code -- client/src/api/schema.ts services/api-service/src/generated; then
+          GENERATED="client/src/api/schema.ts services/api-service/src/generated services/scanner-service/src/generated"
+          git add -A $GENERATED
+          if ! git diff --cached --exit-code -- $GENERATED; then
             echo "::error::Generated code is out of sync with api/*.yaml. Run ./api/scripts/gen-all.sh and commit the result."
             exit 1
           fi
@@ -78,6 +79,7 @@ jobs:
         service:
           - auth-service
           - api-service
+          - scanner-service
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -130,6 +132,10 @@ jobs:
       - name: Lint
         working-directory: client
         run: npm run lint
+
+      - name: Test
+        working-directory: client
+        run: npm test
 
       - name: Build
         working-directory: client

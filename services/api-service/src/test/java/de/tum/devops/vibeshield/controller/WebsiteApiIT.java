@@ -90,6 +90,28 @@ class WebsiteApiIT {
     }
 
     @Test
+    void createWebsite_withOverlongUrl_returns400ValidationError() throws Exception {
+        String overlongUrl = "https://shop.example.org/" + "a".repeat(2049);
+
+        mockMvc.perform(post("/api/v1/websites")
+                        .header("Authorization", TestTokens.bearer("a@example.org", 1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\": \"" + overlongUrl + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void createWebsite_withOverlongName_returns400ValidationError() throws Exception {
+        mockMvc.perform(post("/api/v1/websites")
+                        .header("Authorization", TestTokens.bearer("a@example.org", 1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\": \"https://shop.example.org\", \"name\": \"" + "a".repeat(256) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     void createWebsite_duplicateUrl_returns409() throws Exception {
         mockMvc.perform(post("/api/v1/websites")
                         .header("Authorization", TestTokens.bearer("a@example.org", 1))

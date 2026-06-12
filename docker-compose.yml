@@ -17,6 +17,15 @@ services:
     depends_on:
       - database
 
+  scanner-service:
+    build:
+      context: ./services/scanner-service
+    container_name: vibeshield-scanner
+    # Internal-only: reached by the api-service as http://scanner-service:8080.
+    # Deliberately no published ports and no gateway route.
+    expose:
+      - "8080"
+
   langchain-service:
     build:
       context: ./services/langchain-service
@@ -24,9 +33,6 @@ services:
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       MODEL_NAME: ${LANGCHAIN_MODEL_NAME:-gpt-4o-mini}
-    
-    depends_on:
-      - database
 
   client:
     build:

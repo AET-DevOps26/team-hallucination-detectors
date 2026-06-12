@@ -5,6 +5,7 @@ import de.tum.devops.vibeshield.exception.ValidationException;
 import de.tum.devops.vibeshield.model.Website;
 import de.tum.devops.vibeshield.repository.WebsiteRepository;
 import de.tum.devops.vibeshield.security.AuthenticatedUser;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,9 @@ import java.util.List;
 @Service
 public class WebsiteService {
 
+    private static final int MAX_URL_LENGTH = 2048;
+    private static final int MAX_NAME_LENGTH = 255;
+
     private final WebsiteRepository websiteRepository;
 
     public WebsiteService(WebsiteRepository websiteRepository) {
@@ -30,12 +34,15 @@ public class WebsiteService {
     public Website create(AuthenticatedUser user, URI url, String name) {
         String normalizedUrl = validateUrl(url);
         if (websiteRepository.existsByOwnerIdAndUrl(user.userId(), normalizedUrl)) {
-            throw new ConflictException("WEBSITE_ALREADY_REGISTERED",
-                    "You already registered this URL.");
+            throw duplicateWebsite();
         }
-        String displayName = (name == null || name.isBlank()) ? url.getHost() : name.trim();
-        return websiteRepository.save(
-                new Website(user.userId(), normalizedUrl, displayName, Instant.now()));
+        String displayName = validateDisplayName(name, url.getHost());
+        try {
+            return websiteRepository.saveAndFlush(
+                    new Website(user.userId(), normalizedUrl, displayName, Instant.now()));
+        } catch (DataIntegrityViolationException exception) {
+            throw duplicateWebsite();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +59,23 @@ public class WebsiteService {
         if (!scheme.equals("http") && !scheme.equals("https")) {
             throw new ValidationException("url must use the http or https scheme.");
         }
-        return url.toString();
+        String normalizedUrl = url.toString();
+        if (normalizedUrl.length() > MAX_URL_LENGTH) {
+            throw new ValidationException("url must be at most " + MAX_URL_LENGTH + " characters.");
+        }
+        return normalizedUrl;
+    }
+
+    private String validateDisplayName(String name, String defaultName) {
+        String displayName = (name == null || name.isBlank()) ? defaultName : name.trim();
+        if (displayName.length() > MAX_NAME_LENGTH) {
+            throw new ValidationException("name must be at most " + MAX_NAME_LENGTH + " characters.");
+        }
+        return displayName;
+    }
+
+    private ConflictException duplicateWebsite() {
+        return new ConflictException("WEBSITE_ALREADY_REGISTERED",
+                "You already registered this URL.");
     }
 }
