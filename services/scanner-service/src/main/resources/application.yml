@@ -11,6 +11,11 @@ scanner:
   timeout-ms: ${SCANNER_TIMEOUT_MS:5000}
   request-budget: ${SCANNER_REQUEST_BUDGET:25}
   user-agent: ${SCANNER_USER_AGENT:VibeShield-Scanner/1.0}
+  ssrf:
+    # SSRF guard: refuse targets resolving to loopback/private/link-local addresses.
+    # Loopback is relaxed only for tests scanning a local server; keep it false in
+    # every deployed environment.
+    allow-loopback: ${SCANNER_SSRF_ALLOW_LOOPBACK:false}
 
 management:
   endpoints:

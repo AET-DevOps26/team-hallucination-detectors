@@ -5,6 +5,7 @@ import de.tum.devops.vibeshield.scanner.generated.model.ScanCheck;
 import de.tum.devops.vibeshield.scanner.generated.model.ScanExecutionRequest;
 import de.tum.devops.vibeshield.scanner.generated.model.ScanExecutionResult;
 import de.tum.devops.vibeshield.scanner.generated.model.ScannerFinding;
+import de.tum.devops.vibeshield.scanner.http.BlockedAddressException;
 import de.tum.devops.vibeshield.scanner.http.RequestBudgetExceededException;
 import de.tum.devops.vibeshield.scanner.http.SiteFetcher;
 import org.slf4j.Logger;
@@ -37,15 +38,17 @@ public class ScanExecutor {
         URI target = request.getUrl();
         SiteFetcher fetcher = fetcherFactory.newFetcher();
 
-        // One reachability probe up front: a completely unreachable site is a Failed
-        // scan with a reason, not a Completed scan with zero findings.
-        if (!fetcher.fetch(target).reachable()) {
-            return new ScanExecutionResult()
-                    .status(ScanExecutionResult.StatusEnum.FAILED)
-                    .executedChecks(List.of())
-                    .pages(List.of())
-                    .findings(List.of())
-                    .errorMessage("The site could not be reached at " + target + ".");
+        // One reachability probe up front, which also trips the SSRF guard: a target
+        // pointing at a non-public address (loopback/private/link-local/internal) is a
+        // Failed scan with a clear reason, never an attempted fetch. An unreachable
+        // public site is likewise Failed-with-reason, not Completed-with-zero-findings.
+        try {
+            if (!fetcher.fetch(target).reachable()) {
+                return failed("The site could not be reached at " + target + ".");
+            }
+        } catch (BlockedAddressException blocked) {
+            log.warn("Blocked scan of {}: {}", target, blocked.getMessage());
+            return failed(blocked.getMessage());
         }
 
         List<ScannerFinding> findings = new ArrayList<>();
@@ -71,5 +74,14 @@ public class ScanExecutor {
                 .executedChecks(executed)
                 .pages(List.of(target))
                 .findings(findings);
+    }
+
+    private static ScanExecutionResult failed(String errorMessage) {
+        return new ScanExecutionResult()
+                .status(ScanExecutionResult.StatusEnum.FAILED)
+                .executedChecks(List.of())
+                .pages(List.of())
+                .findings(List.of())
+                .errorMessage(errorMessage);
     }
 }

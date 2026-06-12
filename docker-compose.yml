@@ -5,6 +5,7 @@ services:
     container_name: vibeshield-api
     depends_on:
       - database
+      - scanner-service
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s

@@ -57,6 +57,23 @@ rm -rf "$SCANNER_TARGET"
 mkdir -p "$SCANNER_TARGET"
 cp -R "$SCANNER_GEN_DIR/src/main/java/." "$SCANNER_TARGET/"
 
+echo "==> Generating scanner-contract client models (api-service)"
+# Models only: the api-service worker calls the scanner over the internal
+# contract and must marshal exactly the contract types. Copied into the same
+# generated tree as the public-contract output, which the first block wipes —
+# keep this block AFTER it.
+CLIENT_MODELS_DIR="$(mktemp -d)"
+npx --yes @openapitools/openapi-generator-cli@2.15.3 generate \
+  --openapitools "$ROOT/api/openapitools.json" \
+  -i "$ROOT/api/scanner-internal.yaml" \
+  -g spring \
+  -o "$CLIENT_MODELS_DIR" \
+  --model-package de.tum.devops.vibeshield.scannerclient.model \
+  --global-property "models,apiDocs=false,modelDocs=false,apiTests=false,modelTests=false" \
+  --additional-properties "interfaceOnly=true,useSpringBoot3=true,openApiNullable=false,hideGenerationTimestamp=true,useBeanValidation=true"
+cp -R "$CLIENT_MODELS_DIR/src/main/java/." "$TARGET/"
+rm -rf "$CLIENT_MODELS_DIR"
+
 echo "==> Generating TypeScript types (client)"
 if [ ! -d "$ROOT/client/node_modules" ]; then
   (cd "$ROOT/client" && npm ci)

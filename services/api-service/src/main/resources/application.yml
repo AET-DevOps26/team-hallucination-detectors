@@ -16,6 +16,22 @@ spring:
   flyway:
     enabled: true
 
+# Background scan execution: where the scanner-service lives and how often the
+# worker polls for Pending scans. The scans table is the work queue.
+scanner:
+  base-url: ${SCANNER_URL:http://scanner-service:8080}
+  read-timeout-ms: ${SCANNER_READ_TIMEOUT_MS:180000}
+
+scan:
+  worker:
+    enabled: true
+    poll-interval-ms: 2000
+    # Stale-running recovery: a scan claimed by a worker that then crashed is failed
+    # once it has been Running longer than running-timeout-ms. The timeout must stay
+    # well above the worst-case real scan duration (request-budget x scanner timeout).
+    running-timeout-ms: ${SCAN_WORKER_RUNNING_TIMEOUT_MS:300000}
+    recovery-interval-ms: ${SCAN_WORKER_RECOVERY_INTERVAL_MS:60000}
+
 app:
   jwt:
     # Shared HMAC secret used to VALIDATE tokens issued by the auth-service —
