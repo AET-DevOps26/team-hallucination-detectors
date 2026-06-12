@@ -48,6 +48,9 @@ public class Scan {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "started_at")
+    private Instant startedAt;
+
     @Column(name = "completed_at")
     private Instant completedAt;
 
@@ -94,6 +97,10 @@ public class Scan {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getStartedAt() {
+        return startedAt;
     }
 
     public Instant getCompletedAt() {

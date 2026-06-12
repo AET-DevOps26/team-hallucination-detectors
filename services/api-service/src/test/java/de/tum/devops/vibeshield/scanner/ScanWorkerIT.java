@@ -58,7 +58,7 @@ class ScanWorkerIT {
         scanRepository.deleteAll();
         websiteRepository.deleteAll();
         scannerClient = mock(ScannerClient.class);
-        worker = new ScanWorker(processingService, scannerClient, websiteRepository);
+        worker = new ScanWorker(processingService, scannerClient, websiteRepository, 300_000L);
     }
 
     private Scan pendingScan() {
@@ -142,11 +142,40 @@ class ScanWorkerIT {
     }
 
     @Test
-    void claim_isWonExactlyOnce() {
+    void claim_isWonExactlyOnce_andStampsStartedAt() {
         Scan scan = pendingScan();
 
         assertThat(processingService.claim(scan.getId())).isTrue();
         assertThat(processingService.claim(scan.getId())).isFalse();
+        Scan claimed = scanRepository.findById(scan.getId()).orElseThrow();
+        assertThat(claimed.getStatus()).isEqualTo(ScanStatus.RUNNING);
+        assertThat(claimed.getStartedAt()).isNotNull();
+    }
+
+    @Test
+    void staleRunningScan_isRecoveredAsFailedWithReason() {
+        Scan scan = pendingScan();
+        assertThat(processingService.claim(scan.getId())).isTrue();
+
+        // Cutoff in the future → the claimed scan counts as stuck past its timeout.
+        int recovered = processingService.failStaleRunning(Instant.now().plusSeconds(60));
+
+        assertThat(recovered).isEqualTo(1);
+        Scan processed = scanRepository.findById(scan.getId()).orElseThrow();
+        assertThat(processed.getStatus()).isEqualTo(ScanStatus.FAILED);
+        assertThat(processed.getErrorMessage()).contains("did not finish in time");
+        assertThat(processed.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void freshlyClaimedScan_isWithinTimeout_andNotRecovered() {
+        Scan scan = pendingScan();
+        assertThat(processingService.claim(scan.getId())).isTrue();
+
+        // Cutoff in the past → the just-claimed scan is still within its timeout.
+        int recovered = processingService.failStaleRunning(Instant.now().minusSeconds(60));
+
+        assertThat(recovered).isZero();
         assertThat(scanRepository.findById(scan.getId()).orElseThrow().getStatus())
                 .isEqualTo(ScanStatus.RUNNING);
     }

@@ -29,10 +29,11 @@ public class HttpSiteFetcher implements SiteFetcher {
     private final Duration requestTimeout;
     private final String userAgent;
     private final int requestBudget;
+    private final SsrfGuard ssrfGuard;
     private final AtomicInteger requestsSent = new AtomicInteger();
 
     public HttpSiteFetcher(Duration connectTimeout, Duration requestTimeout,
-                           String userAgent, int requestBudget) {
+                           String userAgent, int requestBudget, SsrfGuard ssrfGuard) {
         this.client = HttpClient.newBuilder()
                 .connectTimeout(connectTimeout)
                 .followRedirects(HttpClient.Redirect.NEVER)
@@ -40,10 +41,13 @@ public class HttpSiteFetcher implements SiteFetcher {
         this.requestTimeout = requestTimeout;
         this.userAgent = userAgent;
         this.requestBudget = requestBudget;
+        this.ssrfGuard = ssrfGuard;
     }
 
     @Override
     public FetchResult fetch(URI uri) {
+        // SSRF gate: refuse non-public targets before a connection is ever opened.
+        ssrfGuard.assertAllowed(uri);
         if (requestsSent.incrementAndGet() > requestBudget) {
             throw new RequestBudgetExceededException(requestBudget);
         }

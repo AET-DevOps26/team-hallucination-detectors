@@ -9,12 +9,15 @@ import de.tum.devops.vibeshield.scannerclient.model.ScanExecutionResult;
 import de.tum.devops.vibeshield.service.ScanProcessingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -34,12 +37,15 @@ public class ScanWorker {
     private final ScanProcessingService processingService;
     private final ScannerClient scannerClient;
     private final WebsiteRepository websiteRepository;
+    private final Duration runningTimeout;
 
     public ScanWorker(ScanProcessingService processingService, ScannerClient scannerClient,
-                      WebsiteRepository websiteRepository) {
+                      WebsiteRepository websiteRepository,
+                      @Value("${scan.worker.running-timeout-ms:300000}") long runningTimeoutMs) {
         this.processingService = processingService;
         this.scannerClient = scannerClient;
         this.websiteRepository = websiteRepository;
+        this.runningTimeout = Duration.ofMillis(runningTimeoutMs);
     }
 
     @Scheduled(fixedDelayString = "${scan.worker.poll-interval-ms:2000}")
@@ -77,6 +83,20 @@ public class ScanWorker {
         } catch (RuntimeException exception) {
             processingService.fail(scan.getId(), "Unexpected error while processing the scan.");
             log.error("Unexpected error processing scan {}", scan.getId(), exception);
+        }
+    }
+
+    /**
+     * Recovery sweep, independent of the poll loop: a scan claimed (Running) by a
+     * worker that then crashed would otherwise stay Running forever, since only
+     * Pending scans are picked up. Fail those past the running-timeout so the user
+     * gets a terminal state and a reason instead of a spinner that never resolves.
+     */
+    @Scheduled(fixedDelayString = "${scan.worker.recovery-interval-ms:60000}")
+    public void recoverStaleScans() {
+        int recovered = processingService.failStaleRunning(Instant.now().minus(runningTimeout));
+        if (recovered > 0) {
+            log.warn("Recovered {} scan(s) stuck Running past the {} timeout", recovered, runningTimeout);
         }
     }
 
