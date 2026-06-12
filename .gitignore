@@ -7,6 +7,12 @@ target/
 hs_err_pid*
 replay_pid*
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
 # Node
 node_modules/
 dist/
