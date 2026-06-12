@@ -35,18 +35,18 @@ public class ScanController implements ScansApi {
         var scan = scanService.trigger(currentUser.require(), websiteId, scanRequest);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .location(URI.create("/api/v1/scans/" + scan.getId()))
-                .body(ScanMapper.toModel(scan));
+                .body(toModelWithCount(scan));
     }
 
     @Override
     public ResponseEntity<Scan> getScan(Long scanId) {
-        return ResponseEntity.ok(ScanMapper.toModel(scanService.getScan(currentUser.require(), scanId)));
+        return ResponseEntity.ok(toModelWithCount(scanService.getScan(currentUser.require(), scanId)));
     }
 
     @Override
     public ResponseEntity<List<Scan>> listScans(Long websiteId) {
         List<Scan> scans = scanService.listScans(currentUser.require(), websiteId).stream()
-                .map(ScanMapper::toModel)
+                .map(this::toModelWithCount)
                 .toList();
         return ResponseEntity.ok(scans);
     }
@@ -54,7 +54,11 @@ public class ScanController implements ScansApi {
     @Override
     public ResponseEntity<Scan> getLatestScan(Long websiteId) {
         return ResponseEntity.ok(
-                ScanMapper.toModel(scanService.getLatestScan(currentUser.require(), websiteId)));
+                toModelWithCount(scanService.getLatestScan(currentUser.require(), websiteId)));
+    }
+
+    private Scan toModelWithCount(de.tum.devops.vibeshield.model.Scan scan) {
+        return ScanMapper.toModel(scan, scanService.findingCountFor(scan));
     }
 
     @Override
