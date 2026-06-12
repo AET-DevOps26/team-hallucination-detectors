@@ -1,0 +1,18 @@
+# Redocly lint configuration for the OpenAPI contracts in api/.
+# Run locally with:  npx --yes @redocly/cli@1 lint
+# CI runs the same command on every PR; a failing spec blocks merge.
+
+apis:
+  public@v1:
+    root: api/openapi.yaml
+  scanner-internal@v1:
+    root: api/scanner-internal.yaml
+
+extends:
+  - recommended
+
+rules:
+  # Course project — the repository has no separate API license to declare.
+  info-license: off
+  # /health legitimately has no 4xx response.
+  operation-4xx-response: warn

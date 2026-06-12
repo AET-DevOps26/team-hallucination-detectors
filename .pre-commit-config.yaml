@@ -1,0 +1,17 @@
+# Local quality gates. Install once with:
+#   pip install pre-commit && pre-commit install
+# Run against all files with:
+#   pre-commit run -a
+#
+# CI runs the same OpenAPI lint on every PR, so a skipped hook cannot reach main.
+
+repos:
+  - repo: local
+    hooks:
+      - id: openapi-lint
+        name: OpenAPI lint (Redocly)
+        # Uses the repo-level redocly.yaml, which registers both contract files.
+        entry: npx --yes @redocly/cli@1 lint
+        language: system
+        files: ^(api/.*\.ya?ml|redocly\.yaml)$
+        pass_filenames: false

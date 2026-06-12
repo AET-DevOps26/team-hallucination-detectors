@@ -23,6 +23,49 @@ permissions:
   contents: read
 
 jobs:
+  # OpenAPI contract gate: the spec in api/ is the single source of truth.
+  # Lints both contract files, then regenerates all language artefacts and
+  # fails if the committed generated code drifts from the spec — this is what
+  # makes "edit the spec first" enforceable rather than aspirational.
+  openapi:
+    name: openapi (lint + drift check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      # The OpenAPI generator CLI runs a Java jar under the hood.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Lint OpenAPI specs
+        run: npx --yes @redocly/cli@1 lint
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Regenerate code from the contracts
+        run: ./api/scripts/gen-all.sh
+
+      - name: Fail if generated code drifts from the spec
+        run: |
+          git add -A client/src/api/schema.ts services/api-service/src/generated
+          if ! git diff --cached --exit-code -- client/src/api/schema.ts services/api-service/src/generated; then
+            echo "::error::Generated code is out of sync with api/*.yaml. Run ./api/scripts/gen-all.sh and commit the result."
+            exit 1
+          fi
+
   # Spring Boot services: compile + run the full test suite (tests are H2-backed,
   # so no external Postgres is needed). `gradle build` assembles the jar and runs
   # `test`/`check`, so it verifies both "build" and "tests" in one step.

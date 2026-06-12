@@ -1,0 +1,546 @@
+openapi: 3.0.3
+
+# Single source of truth for the VibeShield public REST API (course requirement:
+# API-first / contract-strong). Edit THIS file, get it reviewed, then regenerate
+# all language artefacts with api/scripts/gen-all.sh — never the other way round.
+#
+# Conventions (apply to every endpoint added here):
+# - All paths are versioned under /api/v1.
+# - Errors always use the unified Error schema { code, message, details }.
+# - All endpoints require a Bearer JWT except registration and login.
+# - Resources owned by another user return 404 (not 403) so website/scan IDs
+#   cannot be enumerated by other authenticated users.
+
+info:
+  title: VibeShield API
+  version: 1.0.0
+  description: |
+    Public REST contract for VibeShield — surface-level security scans for
+    AI-built websites, with AI-generated fix prompts per finding.
+
+    Clients reach this API same-origin through the nginx gateway (locally) or
+    the Kubernetes ingress (deployed): `/api/v1/auth/*` is served by the
+    auth-service, every other `/api/v1/*` path by the api-service. The split is
+    a routing detail; consumers see one API.
+
+    **Async scan workflow:** `POST /api/v1/websites/{websiteId}/scans` returns
+    `202 Accepted` immediately with the scan in status `Pending`. Poll
+    `GET /api/v1/scans/{scanId}` until the status is `Completed` or `Failed`,
+    then fetch `GET /api/v1/scans/{scanId}/findings`.
+
+tags:
+  - name: Auth
+    description: Registration, login, and current-user lookup (auth-service).
+  - name: Websites
+    description: Websites registered by the user for scanning (api-service).
+  - name: Scans
+    description: Scan jobs and their findings (api-service).
+
+servers:
+  - url: /
+    description: Same-origin via the nginx gateway / Kubernetes ingress.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/auth/health:
+    get:
+      tags: [Auth]
+      operationId: getAuthHealth
+      summary: Check auth service liveness
+      security: []
+      responses:
+        "200":
+          description: Auth service is running.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Auth service running
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerUser
+      summary: Register a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Account created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid input or email already registered (`EMAIL_ALREADY_REGISTERED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginUser
+      summary: Exchange credentials for a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: "Authenticated; send the token as `Authorization: Bearer <token>`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Bad credentials (`INVALID_CREDENTIALS`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Return the authenticated user
+      responses:
+        "200":
+          description: The user the presented token belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/websites:
+    get:
+      tags: [Websites]
+      operationId: listWebsites
+      summary: List the authenticated user's registered websites
+      responses:
+        "200":
+          description: All websites registered by the user, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Website"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Websites]
+      operationId: createWebsite
+      summary: Register a website for scanning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebsiteRequest"
+      responses:
+        "201":
+          description: Website registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "400":
+          description: URL is missing or not a valid http(s) URL (`VALIDATION_ERROR`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The user already registered this URL (`WEBSITE_ALREADY_REGISTERED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/websites/{websiteId}/scans:
+    parameters:
+      - $ref: "#/components/parameters/WebsiteId"
+    post:
+      tags: [Scans]
+      operationId: triggerScan
+      summary: Trigger a new scan for a website
+      description: |
+        Creates the scan in status `Pending` and returns immediately; execution
+        happens in the background. At most one scan per website may be
+        `Pending` or `Running` at a time — a second trigger returns `409`.
+      requestBody:
+        required: false
+        description: Optional scan configuration; omitting it runs all checks with defaults.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanRequest"
+      responses:
+        "202":
+          description: Scan accepted for background execution.
+          headers:
+            Location:
+              description: URL of the created scan, for status polling.
+              schema:
+                type: string
+                example: /api/v1/scans/42
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: A scan for this website is already `Pending` or `Running` (`SCAN_IN_PROGRESS`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags: [Scans]
+      operationId: listScans
+      summary: List the scan history of a website
+      responses:
+        "200":
+          description: All scans for the website, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/websites/{websiteId}/scans/latest:
+    get:
+      tags: [Scans]
+      operationId: getLatestScan
+      summary: Return the most recent scan of a website
+      parameters:
+        - $ref: "#/components/parameters/WebsiteId"
+      responses:
+        "200":
+          description: The most recently created scan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Website not visible to this user, or it has no scans yet (`SCAN_NOT_FOUND`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/scans/{scanId}:
+    get:
+      tags: [Scans]
+      operationId: getScan
+      summary: Return a scan's current status
+      description: Poll this endpoint while the status is `Pending` or `Running`.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Current scan state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/scans/{scanId}/findings:
+    get:
+      tags: [Scans]
+      operationId: listFindings
+      summary: List the findings of a scan
+      description: Empty until the scan status is `Completed`.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Findings ordered by severity, most severe first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Finding"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by `POST /api/v1/auth/login`.
+
+  parameters:
+    WebsiteId:
+      name: websiteId
+      in: path
+      required: true
+      description: ID of a website registered by the authenticated user.
+      schema:
+        type: integer
+        format: int64
+    ScanId:
+      name: scanId
+      in: path
+      required: true
+      description: ID of a scan belonging to one of the user's websites.
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid Bearer token (`UNAUTHORIZED`, `INVALID_TOKEN`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource does not exist or belongs to another user (`WEBSITE_NOT_FOUND`, `SCAN_NOT_FOUND`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      description: Unified error shape returned by every VibeShield service.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code, e.g. `SCAN_IN_PROGRESS`.
+          example: SCAN_IN_PROGRESS
+        message:
+          type: string
+          description: Human-readable explanation.
+          example: A scan for this website is already running.
+        details:
+          type: object
+          nullable: true
+          description: Optional structured context (e.g. field-level validation errors).
+          additionalProperties: true
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: User registered successfully
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: vibecoder@example.org
+        password:
+          type: string
+          format: password
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      required: [token, email]
+      properties:
+        token:
+          type: string
+          description: "JWT to send as `Authorization: Bearer <token>`."
+        email:
+          type: string
+          format: email
+
+    UserResponse:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    Website:
+      type: object
+      required: [id, url, name, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 7
+        url:
+          type: string
+          format: uri
+          example: https://my-vibecoded-shop.lovable.app
+        name:
+          type: string
+          description: Display name; defaults to the URL host when not provided.
+          example: My shop
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateWebsiteRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Must be an absolute http(s) URL.
+          example: https://my-vibecoded-shop.lovable.app
+        name:
+          type: string
+          description: Optional display name; defaults to the URL host.
+
+    ScanRequest:
+      type: object
+      description: Configuration for a scan run. All fields are optional.
+      properties:
+        checks:
+          type: array
+          description: Checks to run; defaults to all available checks.
+          items:
+            $ref: "#/components/schemas/ScanCheck"
+        crawlDepth:
+          type: integer
+          minimum: 0
+          maximum: 3
+          description: How many link levels to follow from the start URL. Defaults to 0, which scans only the registered URL.
+        includeSubdomains:
+          type: boolean
+          description: Whether the crawl may follow links to subdomains of the registered host. Defaults to false.
+
+    Scan:
+      type: object
+      description: A scan job and its current state.
+      required: [id, websiteId, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        websiteId:
+          type: integer
+          format: int64
+          example: 7
+        status:
+          $ref: "#/components/schemas/ScanStatus"
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once the status is `Completed` or `Failed`.
+        errorMessage:
+          type: string
+          nullable: true
+          description: Why the scan failed; only set when the status is `Failed`.
+        findingCount:
+          type: integer
+          nullable: true
+          description: Number of findings; only set when the status is `Completed`.
+          example: 5
+
+    ScanStatus:
+      type: string
+      description: Lifecycle of a scan job.
+      enum: [Pending, Running, Completed, Failed]
+
+    ScanCheck:
+      type: string
+      description: |
+        A surface-level check the scanner can run. Values match the scan
+        options offered in the client UI.
+      enum: [crawl, https, headers, adminPaths, secrets, sensitiveFiles]
+
+    Severity:
+      type: string
+      description: How urgently a finding should be fixed.
+      enum: [Critical, High, Medium, Low, Info]
+
+    FindingStatus:
+      type: string
+      description: Triage state of a finding. New findings start as `Open`.
+      enum: [Open, Fixed, Ignored]
+
+    Finding:
+      type: object
+      description: A single security issue discovered by a scan.
+      required: [id, scanId, check, title, severity, affected, explanation, suggestedFix, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        scanId:
+          type: integer
+          format: int64
+        check:
+          $ref: "#/components/schemas/ScanCheck"
+        title:
+          type: string
+          example: Missing Content-Security-Policy header
+        severity:
+          $ref: "#/components/schemas/Severity"
+        affected:
+          type: string
+          description: URL, path, or header the finding applies to.
+          example: https://my-vibecoded-shop.lovable.app/
+        explanation:
+          type: string
+          description: Non-technical explanation of the risk, written for vibecoders.
+        suggestedFix:
+          type: string
+          description: Plain-language fix suggestion; input for AI fix-prompt generation.
+        status:
+          $ref: "#/components/schemas/FindingStatus"
