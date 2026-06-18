@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { ProfileRow } from "../components/ui/ProfileRow";
-import { scanLabels } from "../constants/scans";
+import { scanDescriptions, scanLabels } from "../constants/scans";
 import { NewAnalysisInput, ScanOption, Site } from "../types/domain";
 
 type NewAnalysisPageProps = {
@@ -199,10 +199,25 @@ function SelectedScope({
       <h2 className="text-xl font-semibold">Selected scope</h2>
       <div className="mt-4 space-y-3">
         <ProfileRow label="URL" value={url || "Not set"} />
-        <ProfileRow label="Checks" value={String(selectedScans.length)} />
         <ProfileRow label="Crawl depth" value={String(crawlDepth)} />
         <ProfileRow label="Subdomains" value={includeSubdomains ? "Included" : "Excluded"} />
       </div>
+      {selectedScans.length > 0 && (
+        <div className="mt-5">
+          <p className="text-sm font-medium text-zinc-700">What will be checked</p>
+          <ul className="mt-3 space-y-3">
+            {selectedScans.map((scan) => (
+              <li className="flex gap-2" key={scan}>
+                <span className="mt-0.5 text-teal-600">✓</span>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-800">{scanLabels[scan]}</p>
+                  <p className="text-xs text-zinc-500">{scanDescriptions[scan]}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </aside>
   );
 }
