@@ -76,7 +76,7 @@ public class Website {
    * Get url
    * @return url
    */
-  @NotNull @Valid @Size(max = 2048) 
+  @NotNull @Valid 
   @Schema(name = "url", example = "https://my-vibecoded-shop.lovable.app", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("url")
   public URI getUrl() {

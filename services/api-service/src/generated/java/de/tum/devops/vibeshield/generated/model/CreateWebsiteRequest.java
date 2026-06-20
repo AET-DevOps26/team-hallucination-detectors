@@ -46,7 +46,7 @@ public class CreateWebsiteRequest {
    * Must be an absolute http(s) URL.
    * @return url
    */
-  @NotNull @Valid @Size(max = 2048) 
+  @NotNull @Valid 
   @Schema(name = "url", example = "https://my-vibecoded-shop.lovable.app", description = "Must be an absolute http(s) URL.", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("url")
   public URI getUrl() {
