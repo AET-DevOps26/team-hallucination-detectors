@@ -419,7 +419,6 @@ components:
         url:
           type: string
           format: uri
-          maxLength: 2048
           example: https://my-vibecoded-shop.lovable.app
         name:
           type: string
@@ -437,7 +436,6 @@ components:
         url:
           type: string
           format: uri
-          maxLength: 2048
           description: Must be an absolute http(s) URL.
           example: https://my-vibecoded-shop.lovable.app
         name:
