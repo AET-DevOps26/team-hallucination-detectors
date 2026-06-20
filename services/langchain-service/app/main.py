@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.chains import build_chat_chain
+from app.chains import build_chat_chain, build_fix_prompt_chain
 from app.settings import settings
 
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.app_name)
 
 chat_chain = build_chat_chain()
+fix_prompt_chain = build_fix_prompt_chain()
 
 
 class ChatRequest(BaseModel):
@@ -25,6 +26,23 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+
+
+class FixPromptRequest(BaseModel):
+    """One security finding, in the plain-language shape the dashboard already holds."""
+
+    title: str = Field(..., min_length=1)
+    severity: str = Field(..., min_length=1)
+    check: str = ""
+    affected: str = ""
+    summary: str = ""
+    impact: str = ""
+
+
+class FixPromptResponse(BaseModel):
+    """A single prompt the user pastes straight into their AI builder."""
+
+    prompt: str
 
 
 class ErrorResponse(BaseModel):
@@ -76,3 +94,20 @@ async def chat(request: ChatRequest):
     result = await chat_chain.ainvoke({"message": request.message})
 
     return ChatResponse(response=result.content)
+
+
+@app.post("/fix-prompt", response_model=FixPromptResponse)
+async def fix_prompt(request: FixPromptRequest):
+    """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature)."""
+    result = await fix_prompt_chain.ainvoke(
+        {
+            "title": request.title,
+            "severity": request.severity,
+            "check": request.check or "n/a",
+            "affected": request.affected or "n/a",
+            "summary": request.summary or "n/a",
+            "impact": request.impact or "n/a",
+        }
+    )
+
+    return FixPromptResponse(prompt=result.content.strip())

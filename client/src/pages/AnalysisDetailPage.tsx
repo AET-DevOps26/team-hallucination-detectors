@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { generateFixPrompt } from "../api/genai";
 import { FindingDetailsPanel } from "../components/analysis/FindingDetailsPanel";
 import { FindingListItem } from "../components/analysis/FindingListItem";
 import { SeveritySummary } from "../components/analysis/SeveritySummary";
 import { scanLabels, severityStyles } from "../constants/scans";
-import { Analysis, FindingStatus } from "../types/domain";
-import { getSeverityCounts, sortOpenFindings } from "../utils/analysis";
+import { Analysis, Finding, FindingStatus } from "../types/domain";
+import { getSeverityCounts } from "../utils/analysis";
 
 type AnalysisDetailPageProps = {
   analysis?: Analysis;
@@ -55,7 +56,6 @@ export function AnalysisDetailPage({
   }
 
   const severityCounts = getSeverityCounts(analysis.findings);
-  const fixNext = sortOpenFindings(analysis.findings);
 
   return (
     <main className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -83,7 +83,7 @@ export function AnalysisDetailPage({
           )}
         </div>
       </section>
-      <FixNext findings={fixNext} onSelectFinding={onSelectFinding} />
+      <GenerateFixPrompt finding={selectedFinding} />
     </main>
   );
 }
@@ -123,32 +123,116 @@ function AnalysisHeader({
   );
 }
 
-function FixNext({
-  findings,
-  onSelectFinding,
-}: {
-  findings: Analysis["findings"];
-  onSelectFinding: (id: string) => void;
-}) {
+/**
+ * VibeShield's core GenAI surface: turns the selected finding into a single,
+ * ready-to-paste prompt for the user's AI builder (Lovable, Cursor, v0, Bolt,
+ * Replit). The user never reads or writes code — the same kind of AI that built
+ * the site repairs it.
+ */
+function GenerateFixPrompt({ finding }: { finding?: Finding }) {
+  const [prompt, setPrompt] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  // A different finding is a different prompt — clear any stale output.
+  useEffect(() => {
+    setPrompt("");
+    setStatus("idle");
+    setError("");
+    setCopied(false);
+  }, [finding?.id]);
+
+  async function handleGenerate() {
+    if (!finding) return;
+    setStatus("loading");
+    setError("");
+    setCopied(false);
+    try {
+      const result = await generateFixPrompt(finding);
+      setPrompt(result);
+      setStatus("idle");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not generate a fix prompt. Please try again.",
+      );
+      setStatus("error");
+    }
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <aside className="rounded-md border border-zinc-300 bg-white p-5">
-      <h2 className="text-xl font-semibold">Fix next</h2>
-      <div className="mt-4 space-y-3">
-        {findings.map((finding) => (
-          <button className="w-full rounded-md border border-zinc-200 p-3 text-left hover:border-teal-500" key={finding.id} onClick={() => onSelectFinding(finding.id)} type="button">
-            <span className={`rounded border px-2 py-1 text-xs font-semibold ${severityStyles[finding.severity]}`}>
+      <h2 className="text-xl font-semibold">Generate fix prompt</h2>
+      <p className="mt-1 text-sm text-zinc-600">
+        Create a ready-to-paste prompt for your AI builder (Lovable, Cursor, v0,
+        Bolt, Replit) — let the AI that built your site repair it.
+      </p>
+
+      {!finding && (
+        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
+          Select a finding to generate a fix prompt.
+        </p>
+      )}
+
+      {finding && (
+        <div className="mt-4 space-y-4">
+          <div className="rounded-md border border-zinc-200 p-3">
+            <span
+              className={`rounded border px-2 py-1 text-xs font-semibold ${severityStyles[finding.severity]}`}
+            >
               {finding.severity}
             </span>
             <p className="mt-2 text-sm font-semibold">{finding.title}</p>
-            <p className="mt-1 truncate text-xs text-zinc-500">{finding.affected}</p>
+            <p className="mt-1 truncate text-xs text-zinc-500">
+              {finding.affected}
+            </p>
+          </div>
+
+          <button
+            className="w-full rounded-md bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={status === "loading"}
+            onClick={handleGenerate}
+            type="button"
+          >
+            {status === "loading"
+              ? "Generating…"
+              : prompt
+                ? "Regenerate fix prompt"
+                : "Generate fix prompt"}
           </button>
-        ))}
-        {findings.length === 0 && (
-          <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">
-            No open findings in this analysis.
-          </p>
-        )}
-      </div>
+
+          {status === "error" && (
+            <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+              {error}
+            </p>
+          )}
+
+          {prompt && (
+            <div className="space-y-2">
+              <textarea
+                className="min-h-48 w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-xs text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                readOnly
+                value={prompt}
+              />
+              <button
+                className="w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
+                onClick={handleCopy}
+                type="button"
+              >
+                {copied ? "Copied" : "Copy prompt"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

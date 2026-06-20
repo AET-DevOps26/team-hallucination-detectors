@@ -47,7 +47,7 @@ public class CreateWebsiteRequest {
    * @return url
    */
   @NotNull @Valid 
-  @Schema(name = "url", example = "https://my-vibecoded-shop.lovable.app", maxLength = 2048, description = "Must be an absolute http(s) URL.", requiredMode = Schema.RequiredMode.REQUIRED)
+  @Schema(name = "url", example = "https://my-vibecoded-shop.lovable.app", description = "Must be an absolute http(s) URL.", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("url")
   public URI getUrl() {
     return url;
@@ -66,9 +66,8 @@ public class CreateWebsiteRequest {
    * Optional display name; defaults to the URL host.
    * @return name
    */
-  
   @Size(max = 255) 
-  @Schema(name = "name", maxLength = 255, description = "Optional display name; defaults to the URL host.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @Schema(name = "name", description = "Optional display name; defaults to the URL host.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("name")
   public @Nullable String getName() {
     return name;
@@ -117,3 +116,4 @@ public class CreateWebsiteRequest {
     return o.toString().replace("\n", "\n    ");
   }
 }
+
