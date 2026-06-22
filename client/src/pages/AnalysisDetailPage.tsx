@@ -56,7 +56,6 @@ export function AnalysisDetailPage({
   }
 
   const severityCounts = getSeverityCounts(analysis.findings);
-  const fixNext = sortOpenFindings(analysis.findings);
   const inProgress = analysis.status === "Pending" || analysis.status === "Running";
 
   return (
