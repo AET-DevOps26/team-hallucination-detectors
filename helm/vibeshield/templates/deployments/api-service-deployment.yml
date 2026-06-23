@@ -20,5 +20,10 @@ spec:
               value: "true"
             - name: SPRING_FLYWAY_BASELINE_VERSION
               value: "0"
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: APP_JWT_SECRET
           ports:
             - containerPort: 8080
