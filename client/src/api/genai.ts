@@ -20,6 +20,7 @@ export type FixPromptInput = Pick<
  */
 export async function generateFixPrompt(
   finding: FixPromptInput,
+  builder: string = "Generic",
 ): Promise<string> {
   const { data } = await apiClient.post<{ prompt: string }>(
     "/langchain/fix-prompt",
@@ -30,6 +31,7 @@ export async function generateFixPrompt(
       affected: finding.affected,
       summary: finding.summary,
       impact: finding.impact,
+      builder,
     },
     { timeout: 30000 },
   );

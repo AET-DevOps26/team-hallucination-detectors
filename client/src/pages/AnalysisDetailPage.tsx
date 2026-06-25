@@ -568,11 +568,15 @@ function AnalysisHeader({
  * Replit). The user never reads or writes code — the same kind of AI that built
  * the site repairs it.
  */
+const AI_BUILDERS = ["Generic", "Lovable", "Cursor", "v0", "Bolt", "Replit"] as const;
+type AiBuilder = (typeof AI_BUILDERS)[number];
+
 function GenerateFixPrompt({ finding }: { finding?: Finding }) {
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [builder, setBuilder] = useState<AiBuilder>("Generic");
 
   // A different finding is a different prompt — clear any stale output.
   useEffect(() => {
@@ -588,7 +592,7 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
     setError("");
     setCopied(false);
     try {
-      const result = await generateFixPrompt(finding);
+      const result = await generateFixPrompt(finding, builder);
       setPrompt(result);
       setStatus("idle");
     } catch (err) {
@@ -633,6 +637,22 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
             <p className="mt-1 truncate text-xs text-zinc-500">
               {finding.affected}
             </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-zinc-600" htmlFor="builder-select">
+              AI builder
+            </label>
+            <select
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              id="builder-select"
+              onChange={(e) => setBuilder(e.target.value as AiBuilder)}
+              value={builder}
+            >
+              {AI_BUILDERS.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
           </div>
 
           <button

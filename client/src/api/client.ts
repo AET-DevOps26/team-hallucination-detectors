@@ -133,3 +133,11 @@ export async function fetchCurrentUser(token: string): Promise<CurrentUserRespon
 
   return data;
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await authClient.post("/forgot-password", { email });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await authClient.post("/reset-password", { token, newPassword });
+}

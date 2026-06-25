@@ -26,6 +26,15 @@ export const scanCategoryStyles: Record<ScanOption, string> = {
   sensitiveFiles: "border-amber-300 bg-amber-50 text-amber-800",
 };
 
+export const scanDescriptions: Record<ScanOption, string> = {
+  crawl: "Discovers linked pages, forms, and API endpoints so other checks have full coverage of your site.",
+  https: "Verifies your site forces HTTPS and flags mixed-content warnings that could expose user data.",
+  headers: "Checks for missing security headers like CSP, HSTS, and X-Frame-Options that protect against common attacks.",
+  adminPaths: "Looks for publicly reachable admin panels, login pages, and management interfaces that should be restricted.",
+  secrets: "Scans your client-side JavaScript bundles for accidentally exposed API keys, tokens, and credentials.",
+  sensitiveFiles: "Probes for backup files, config dumps, and sensitive paths like .env or wp-config.php left publicly accessible.",
+};
+
 export const severityStyles: Record<Severity, string> = {
   Critical: "border-red-700 bg-red-50 text-red-800",
   High: "border-orange-600 bg-orange-50 text-orange-800",

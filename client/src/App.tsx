@@ -11,6 +11,7 @@ import { LandingRedirect } from "./pages/LandingRedirect";
 import { LoginPage } from "./pages/LoginPage";
 import { NewAnalysisPage } from "./pages/NewAnalysisPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 export default function App() {
   const router = useAppRouter();
@@ -65,6 +66,11 @@ type AppRouteProps = {
 };
 
 function AppRoute({ analysis, auth, router, team }: AppRouteProps) {
+  if (router.route === "/reset-password") {
+    const token = new URLSearchParams(window.location.search).get("token") ?? "";
+    return <ResetPasswordPage token={token} navigate={router.navigate} />;
+  }
+
   if (!auth.session) {
     return <LoginRoute auth={auth} />;
   }

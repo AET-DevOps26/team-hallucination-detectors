@@ -27,9 +27,32 @@ export function AnalysisListPage({ analyses, navigate }: AnalysisListPageProps) 
       </section>
 
       <section className="grid gap-4">
-        {analyses.map((analysis) => (
-          <AnalysisCard analysis={analysis} key={analysis.id} navigate={navigate} />
-        ))}
+        {analyses.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 rounded-md border border-dashed border-zinc-300 bg-white px-6 py-16 text-center">
+            <div className="rounded-full bg-teal-50 p-4">
+              <svg className="h-8 w-8 text-teal-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-zinc-900">No analyses yet</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                Start by scanning your first site. VibeShield checks for common security issues and generates AI-powered fix prompts.
+              </p>
+            </div>
+            <button
+              className="rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+              onClick={() => navigate("/analysis/new")}
+              type="button"
+            >
+              Scan your first site
+            </button>
+          </div>
+        ) : (
+          analyses.map((analysis) => (
+            <AnalysisCard analysis={analysis} key={analysis.id} navigate={navigate} />
+          ))
+        )}
       </section>
     </main>
   );
