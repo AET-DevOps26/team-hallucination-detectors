@@ -9,6 +9,7 @@ import {
   listFindings,
   listScans,
   listWebsites,
+  rescanScan,
   triggerScan,
 } from "../api/scans";
 import { Finding, FindingStatus, NewAnalysisInput } from "../types/domain";
@@ -135,6 +136,17 @@ export function useAnalysisState({
     navigate(`/analysis/${scan.id}`);
   }
 
+  async function rescanAnalysis(analysisId: string): Promise<void> {
+    const scan = await rescanScan(Number(analysisId));
+    setScans((current) => [scan, ...current.filter((existing) => existing.id !== scan.id)]);
+    setFindingsByScan((current) => {
+      const next = { ...current };
+      delete next[String(scan.id)];
+      return next;
+    });
+    navigate(`/analysis/${scan.id}`);
+  }
+
   async function ensureWebsite(url: string) {
     try {
       return await createWebsite(url);
@@ -195,6 +207,7 @@ export function useAnalysisState({
     createAnalysis,
     currentAnalysis,
     currentAnalysisId,
+    rescanAnalysis,
     resolutionReason,
     selectedFindingId,
     setResolutionReason,

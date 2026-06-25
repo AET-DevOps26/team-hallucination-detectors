@@ -35,7 +35,8 @@ export type Finding = {
   affected: string;
   summary: string;
   impact: string;
-  check: string;
+  check: ScanOption;
+  checkLabel: string;
   reason?: string;
 };
 

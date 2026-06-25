@@ -119,6 +119,7 @@ function AppRoute({ analysis, auth, router, team }: AppRouteProps) {
         analysis={analysis.currentAnalysis}
         navigate={router.navigate}
         onSelectFinding={analysis.setSelectedFindingId}
+        onRescan={analysis.rescanAnalysis}
         onUpdateFinding={analysis.updateFinding}
         resolutionReason={analysis.resolutionReason}
         selectedFindingId={analysis.selectedFindingId}

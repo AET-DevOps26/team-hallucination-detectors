@@ -1,4 +1,4 @@
-import { severityStyles } from "../../constants/scans";
+import { scanCategoryStyles, severityStyles } from "../../constants/scans";
 import { Finding } from "../../types/domain";
 
 type FindingListItemProps = {
@@ -20,13 +20,18 @@ export function FindingListItem({
       onClick={() => onSelectFinding(finding.id)}
       type="button"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded border px-2 py-1 text-xs font-semibold ${scanCategoryStyles[finding.check]}`}
+        >
+          {finding.checkLabel}
+        </span>
         <span
           className={`rounded border px-2 py-1 text-xs font-semibold ${severityStyles[finding.severity]}`}
         >
           {finding.severity}
         </span>
-        <span className="rounded bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600">
+        <span className="ml-auto rounded bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600">
           {finding.status}
         </span>
       </div>

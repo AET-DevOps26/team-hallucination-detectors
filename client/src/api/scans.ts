@@ -10,6 +10,7 @@ export type ApiWebsite = components["schemas"]["Website"];
 export type ApiScan = components["schemas"]["Scan"];
 export type ApiFinding = components["schemas"]["Finding"];
 export type ApiScanRequest = components["schemas"]["ScanRequest"];
+export type ApiScanComparison = components["schemas"]["ScanComparison"];
 
 export async function listWebsites(): Promise<ApiWebsite[]> {
   const { data } = await apiClient.get<ApiWebsite[]>("/api/v1/websites");
@@ -45,5 +46,15 @@ export async function getScan(scanId: number): Promise<ApiScan> {
 
 export async function listFindings(scanId: number): Promise<ApiFinding[]> {
   const { data } = await apiClient.get<ApiFinding[]>(`/api/v1/scans/${scanId}/findings`);
+  return data;
+}
+
+export async function rescanScan(scanId: number): Promise<ApiScan> {
+  const { data } = await apiClient.post<ApiScan>(`/api/v1/scans/${scanId}/rescan`);
+  return data;
+}
+
+export async function getScanComparison(scanId: number): Promise<ApiScanComparison> {
+  const { data } = await apiClient.get<ApiScanComparison>(`/api/v1/scans/${scanId}/comparison`);
   return data;
 }

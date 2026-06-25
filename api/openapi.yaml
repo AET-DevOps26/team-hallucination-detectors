@@ -35,6 +35,8 @@ tags:
     description: Websites registered by the user for scanning (api-service).
   - name: Scans
     description: Scan jobs and their findings (api-service).
+  - name: Reports
+    description: Exportable scan reports and launch-readiness summaries (api-service).
 
 servers:
   - url: /
@@ -348,6 +350,137 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/scans/{scanId}/rescan:
+    post:
+      tags: [Scans]
+      operationId: rescan
+      summary: Rerun a scan using the same configuration
+      description: Creates a new Pending scan for the same website and scan configuration as the selected scan.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "202":
+          description: Rescan accepted for background execution.
+          headers:
+            Location:
+              description: URL of the created scan, for status polling.
+              schema:
+                type: string
+                example: /api/v1/scans/43
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: A scan for this website is already `Pending` or `Running` (`SCAN_IN_PROGRESS`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/scans/{scanId}/comparison:
+    get:
+      tags: [Scans]
+      operationId: getScanComparison
+      summary: Compare this scan with the previous completed scan
+      description: Compares the selected completed scan with the latest previous completed scan for the same website.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Comparison result and prioritized action plan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanComparison"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/scans/{scanId}/report/data:
+    get:
+      tags: [Reports]
+      operationId: getScanReportData
+      summary: Return computed report data for a scan
+      description: Includes prioritized findings, rough effort estimates, recommended next steps, and the safe-to-launch checklist.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Computed report data for the current scan state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/scans/{scanId}/report/summary.html:
+    get:
+      tags: [Reports]
+      operationId: exportExecutiveSummaryHtml
+      summary: Export an executive summary as HTML
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Downloadable executive summary.
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/scans/{scanId}/report/summary.pdf:
+    get:
+      tags: [Reports]
+      operationId: exportExecutiveSummaryPdf
+      summary: Export an executive summary as PDF
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Downloadable executive summary PDF.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/scans/{scanId}/report/full.pdf:
+    get:
+      tags: [Reports]
+      operationId: exportFullScanReportPdf
+      summary: Export the full scan results as PDF
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: Downloadable full scan results PDF.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -615,3 +748,223 @@ components:
           description: Plain-language fix suggestion; input for AI fix-prompt generation.
         status:
           $ref: "#/components/schemas/FindingStatus"
+
+    ScanChangeStatus:
+      type: string
+      description: How a finding changed compared with the previous completed scan.
+      enum: [Fixed, Still present, Newly introduced]
+
+    ComparisonFinding:
+      type: object
+      required: [changeStatus, severity, check, title, affected, suggestedFix, effort]
+      properties:
+        findingId:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID of the finding in the scan it came from.
+        changeStatus:
+          $ref: "#/components/schemas/ScanChangeStatus"
+        severity:
+          $ref: "#/components/schemas/Severity"
+        check:
+          $ref: "#/components/schemas/ScanCheck"
+        title:
+          type: string
+        affected:
+          type: string
+        suggestedFix:
+          type: string
+        suggestedFixOrder:
+          type: integer
+          nullable: true
+          description: 1-based action-plan order for current open findings.
+        effort:
+          $ref: "#/components/schemas/EffortEstimate"
+
+    ScanComparisonSummary:
+      type: object
+      required: [fixed, stillPresent, newlyIntroduced]
+      properties:
+        fixed:
+          type: integer
+        stillPresent:
+          type: integer
+        newlyIntroduced:
+          type: integer
+
+    ScanComparison:
+      type: object
+      required: [scanId, comparable, message, summary, findings, actionPlan]
+      properties:
+        scanId:
+          type: integer
+          format: int64
+        previousScanId:
+          type: integer
+          format: int64
+          nullable: true
+        comparable:
+          type: boolean
+          description: False when the scan is not completed or no previous completed scan exists.
+        message:
+          type: string
+        summary:
+          $ref: "#/components/schemas/ScanComparisonSummary"
+        findings:
+          type: array
+          description: Fixed, still-present, and newly introduced findings.
+          items:
+            $ref: "#/components/schemas/ComparisonFinding"
+        actionPlan:
+          type: array
+          description: Current open findings ordered by severity and rough effort estimate.
+          items:
+            $ref: "#/components/schemas/ComparisonFinding"
+
+    EffortEstimate:
+      type: object
+      required: [level, estimate]
+      properties:
+        level:
+          type: string
+          enum: [Low, Medium, High]
+        estimate:
+          type: string
+          example: 1-2 hours
+
+    ReportSite:
+      type: object
+      required: [id, name, url]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+
+    ReportFinding:
+      type: object
+      required: [id, severity, check, title, affected, explanation, suggestedFix, status, effort]
+      properties:
+        id:
+          type: integer
+          format: int64
+        severity:
+          $ref: "#/components/schemas/Severity"
+        check:
+          $ref: "#/components/schemas/ScanCheck"
+        title:
+          type: string
+        affected:
+          type: string
+        explanation:
+          type: string
+        suggestedFix:
+          type: string
+        status:
+          $ref: "#/components/schemas/FindingStatus"
+        suggestedFixOrder:
+          type: integer
+          nullable: true
+          description: 1-based priority among open findings; null for fixed or ignored findings.
+        effort:
+          $ref: "#/components/schemas/EffortEstimate"
+
+    ReportNextStep:
+      type: object
+      required: [order, title, severity, affected, effort, action]
+      properties:
+        order:
+          type: integer
+        title:
+          type: string
+        severity:
+          $ref: "#/components/schemas/Severity"
+        affected:
+          type: string
+        effort:
+          $ref: "#/components/schemas/EffortEstimate"
+        action:
+          type: string
+
+    LaunchChecklistItem:
+      type: object
+      required: [label, result, checked, reason]
+      properties:
+        label:
+          type: string
+          example: HTTPS and mixed-content checks
+        result:
+          type: string
+          enum: [Pass, Needs attention, Not selected, Incomplete]
+          description: Launch-readiness result for this scan category.
+        checked:
+          type: boolean
+          description: Whether this scan category was selected and evaluated.
+        reason:
+          type: string
+          example: Checked and found 1 open finding; highest severity is High.
+
+    LaunchChecklist:
+      type: object
+      required: [status, blockingIssues, items]
+      properties:
+        status:
+          type: string
+          enum: [Safe to launch, Safe with warnings, Needs attention, Not safe to launch]
+        blockingIssues:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LaunchChecklistItem"
+
+    ExecutiveSummary:
+      type: object
+      required: [riskLevel, totalFindings, openFindings, recommendedNextSteps]
+      properties:
+        riskLevel:
+          type: string
+          enum: [Critical, High, Medium, Low]
+        totalFindings:
+          type: integer
+        openFindings:
+          type: integer
+        recommendedNextSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportNextStep"
+
+    ReportData:
+      type: object
+      required: [scanId, site, scanStatus, scanCreatedAt, generatedAt, safeToLaunch, executiveSummary, findings]
+      properties:
+        scanId:
+          type: integer
+          format: int64
+        site:
+          $ref: "#/components/schemas/ReportSite"
+        scanStatus:
+          $ref: "#/components/schemas/ScanStatus"
+        scanCreatedAt:
+          type: string
+          format: date-time
+        scanCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        generatedAt:
+          type: string
+          format: date-time
+        safeToLaunch:
+          $ref: "#/components/schemas/LaunchChecklist"
+        executiveSummary:
+          $ref: "#/components/schemas/ExecutiveSummary"
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportFinding"
