@@ -1,4 +1,4 @@
-import { severityStyles } from "../../constants/scans";
+import { scanCategoryStyles, severityStyles } from "../../constants/scans";
 import { Analysis, Finding, FindingStatus } from "../../types/domain";
 import { FindingDetail } from "./FindingDetail";
 
@@ -37,7 +37,14 @@ export function FindingDetailsPanel({
 
       <div className="mt-5 grid gap-4">
         <FindingDetail label="Status" value={finding.status} />
-        <FindingDetail label="Check" value={finding.check} />
+        <div>
+          <p className="text-xs font-semibold uppercase text-zinc-500">Scan category</p>
+          <span
+            className={`mt-1 inline-flex rounded border px-2 py-1 text-sm font-semibold ${scanCategoryStyles[finding.check]}`}
+          >
+            {finding.checkLabel}
+          </span>
+        </div>
         <FindingDetail
           label="Affected URL, file, route, or endpoint"
           value={finding.affected}

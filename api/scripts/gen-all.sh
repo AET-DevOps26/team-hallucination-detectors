@@ -19,7 +19,7 @@ echo "==> Linting contracts"
 (cd "$ROOT" && npx --yes @redocly/cli@1 lint)
 
 echo "==> Generating Spring server interfaces (api-service)"
-# Only the Websites/Scans tags are generated here; the Auth tag is implemented
+# Only the Websites/Scans/Reports tags are generated here; the Auth tag is implemented
 # by the auth-service, whose migration to generated interfaces is tracked
 # separately. Generation goes through a temp dir so the committed tree only
 # ever contains .java sources, no generator metadata.
@@ -33,7 +33,7 @@ npx --yes @openapitools/openapi-generator-cli@2.15.3 generate \
   -o "$GEN_DIR" \
   --api-package de.tum.devops.vibeshield.generated.api \
   --model-package de.tum.devops.vibeshield.generated.model \
-  --global-property "apis=Websites:Scans,models,apiDocs=false,modelDocs=false,apiTests=false,modelTests=false" \
+  --global-property "apis=Websites:Scans:Reports,models,apiDocs=false,modelDocs=false,apiTests=false,modelTests=false" \
   --additional-properties "interfaceOnly=true,useSpringBoot3=true,useTags=true,openApiNullable=false,skipDefaultInterface=true,hideGenerationTimestamp=true,useBeanValidation=true"
 
 TARGET="$ROOT/services/api-service/src/generated/java"

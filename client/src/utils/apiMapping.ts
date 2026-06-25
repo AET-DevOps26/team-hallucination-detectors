@@ -17,6 +17,7 @@ export function toSite(website: ApiWebsite): Site {
 }
 
 export function toFinding(finding: ApiFinding): Finding {
+  const check = finding.check as ScanOption;
   return {
     id: String(finding.id),
     title: finding.title,
@@ -25,7 +26,8 @@ export function toFinding(finding: ApiFinding): Finding {
     affected: finding.affected,
     summary: finding.explanation,
     impact: finding.suggestedFix,
-    check: scanLabels[finding.check as ScanOption] ?? finding.check,
+    check,
+    checkLabel: scanLabels[check] ?? finding.check,
   };
 }
 

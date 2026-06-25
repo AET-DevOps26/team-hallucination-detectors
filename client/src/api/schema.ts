@@ -212,6 +212,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scans/{scanId}/rescan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rerun a scan using the same configuration
+         * @description Creates a new Pending scan for the same website and scan configuration as the selected scan.
+         */
+        post: operations["rescan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare this scan with the previous completed scan
+         * @description Compares the selected completed scan with the latest previous completed scan for the same website.
+         */
+        get: operations["getScanComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/report/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Return computed report data for a scan
+         * @description Includes prioritized findings, rough effort estimates, recommended next steps, and the safe-to-launch checklist.
+         */
+        get: operations["getScanReportData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/report/summary.html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export an executive summary as HTML */
+        get: operations["exportExecutiveSummaryHtml"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/report/summary.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export an executive summary as PDF */
+        get: operations["exportExecutiveSummaryPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/report/full.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export the full scan results as PDF */
+        get: operations["exportFullScanReportPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -379,6 +490,122 @@ export interface components {
             /** @description Plain-language fix suggestion; input for AI fix-prompt generation. */
             suggestedFix: string;
             status: components["schemas"]["FindingStatus"];
+        };
+        /**
+         * @description How a finding changed compared with the previous completed scan.
+         * @enum {string}
+         */
+        ScanChangeStatus: "Fixed" | "Still present" | "Newly introduced";
+        ComparisonFinding: {
+            /**
+             * Format: int64
+             * @description ID of the finding in the scan it came from.
+             */
+            findingId?: number | null;
+            changeStatus: components["schemas"]["ScanChangeStatus"];
+            severity: components["schemas"]["Severity"];
+            check: components["schemas"]["ScanCheck"];
+            title: string;
+            affected: string;
+            suggestedFix: string;
+            /** @description 1-based action-plan order for current open findings. */
+            suggestedFixOrder?: number | null;
+            effort: components["schemas"]["EffortEstimate"];
+        };
+        ScanComparisonSummary: {
+            fixed: number;
+            stillPresent: number;
+            newlyIntroduced: number;
+        };
+        ScanComparison: {
+            /** Format: int64 */
+            scanId: number;
+            /** Format: int64 */
+            previousScanId?: number | null;
+            /** @description False when the scan is not completed or no previous completed scan exists. */
+            comparable: boolean;
+            message: string;
+            summary: components["schemas"]["ScanComparisonSummary"];
+            /** @description Fixed, still-present, and newly introduced findings. */
+            findings: components["schemas"]["ComparisonFinding"][];
+            /** @description Current open findings ordered by severity and rough effort estimate. */
+            actionPlan: components["schemas"]["ComparisonFinding"][];
+        };
+        EffortEstimate: {
+            /** @enum {string} */
+            level: "Low" | "Medium" | "High";
+            /** @example 1-2 hours */
+            estimate: string;
+        };
+        ReportSite: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: uri */
+            url: string;
+        };
+        ReportFinding: {
+            /** Format: int64 */
+            id: number;
+            severity: components["schemas"]["Severity"];
+            check: components["schemas"]["ScanCheck"];
+            title: string;
+            affected: string;
+            explanation: string;
+            suggestedFix: string;
+            status: components["schemas"]["FindingStatus"];
+            /** @description 1-based priority among open findings; null for fixed or ignored findings. */
+            suggestedFixOrder?: number | null;
+            effort: components["schemas"]["EffortEstimate"];
+        };
+        ReportNextStep: {
+            order: number;
+            title: string;
+            severity: components["schemas"]["Severity"];
+            affected: string;
+            effort: components["schemas"]["EffortEstimate"];
+            action: string;
+        };
+        LaunchChecklistItem: {
+            /** @example HTTPS and mixed-content checks */
+            label: string;
+            /**
+             * @description Launch-readiness result for this scan category.
+             * @enum {string}
+             */
+            result: "Pass" | "Needs attention" | "Not selected" | "Incomplete";
+            /** @description Whether this scan category was selected and evaluated. */
+            checked: boolean;
+            /** @example Checked and found 1 open finding; highest severity is High. */
+            reason: string;
+        };
+        LaunchChecklist: {
+            /** @enum {string} */
+            status: "Safe to launch" | "Safe with warnings" | "Needs attention" | "Not safe to launch";
+            blockingIssues: number;
+            items: components["schemas"]["LaunchChecklistItem"][];
+        };
+        ExecutiveSummary: {
+            /** @enum {string} */
+            riskLevel: "Critical" | "High" | "Medium" | "Low";
+            totalFindings: number;
+            openFindings: number;
+            recommendedNextSteps: components["schemas"]["ReportNextStep"][];
+        };
+        ReportData: {
+            /** Format: int64 */
+            scanId: number;
+            site: components["schemas"]["ReportSite"];
+            scanStatus: components["schemas"]["ScanStatus"];
+            /** Format: date-time */
+            scanCreatedAt: string;
+            /** Format: date-time */
+            scanCompletedAt?: string | null;
+            /** Format: date-time */
+            generatedAt: string;
+            safeToLaunch: components["schemas"]["LaunchChecklist"];
+            executiveSummary: components["schemas"]["ExecutiveSummary"];
+            findings: components["schemas"]["ReportFinding"][];
         };
     };
     responses: {
@@ -784,6 +1011,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Finding"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rescan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rescan accepted for background execution. */
+            202: {
+                headers: {
+                    /** @description URL of the created scan, for status polling. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scan"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description A scan for this website is already `Pending` or `Running` (`SCAN_IN_PROGRESS`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getScanComparison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Comparison result and prioritized action plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanComparison"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getScanReportData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Computed report data for the current scan state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportData"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportExecutiveSummaryHtml: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Downloadable executive summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportExecutiveSummaryPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Downloadable executive summary PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportFullScanReportPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Downloadable full scan results PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
             401: components["responses"]["Unauthorized"];

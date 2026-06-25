@@ -77,7 +77,7 @@ class JwtAuthFilterTest {
 
     @Test
     void apiDocs_needNoToken() throws Exception {
-        mockMvc.perform(get("/v3/api-docs"))
+        mockMvc.perform(get("/api/v3/api-docs"))
                 .andExpect(status().isOk());
     }
 

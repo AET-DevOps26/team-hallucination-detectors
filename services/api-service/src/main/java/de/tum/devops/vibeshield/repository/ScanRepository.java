@@ -22,6 +22,9 @@ public interface ScanRepository extends JpaRepository<Scan, Long> {
 
     Optional<Scan> findFirstByWebsiteIdOrderByCreatedAtDescIdDesc(Long websiteId);
 
+    Optional<Scan> findFirstByWebsiteIdAndStatusAndIdLessThanOrderByCreatedAtDescIdDesc(
+            Long websiteId, ScanStatus status, Long id);
+
     boolean existsByWebsiteIdAndStatusIn(Long websiteId, Collection<ScanStatus> statuses);
 
     Optional<Scan> findFirstByStatusOrderByCreatedAtAscIdAsc(ScanStatus status);
