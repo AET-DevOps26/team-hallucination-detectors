@@ -2,11 +2,14 @@ package de.tum.devops.vibeshield.controller;
 
 import de.tum.devops.vibeshield.dto.AuthResponse;
 import de.tum.devops.vibeshield.dto.ErrorResponse;
+import de.tum.devops.vibeshield.dto.ForgotPasswordRequest;
 import de.tum.devops.vibeshield.dto.LoginRequest;
 import de.tum.devops.vibeshield.dto.RegisterRequest;
+import de.tum.devops.vibeshield.dto.ResetPasswordRequest;
 import de.tum.devops.vibeshield.model.User;
 import de.tum.devops.vibeshield.repository.UserRepository;
 import de.tum.devops.vibeshield.service.JwtService;
+import de.tum.devops.vibeshield.service.PasswordResetService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +26,15 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final PasswordResetService passwordResetService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    /** Injects the user store and JWT issuer used by the authentication endpoints. */
-    public AuthController(UserRepository userRepository, JwtService jwtService) {
+    /** Injects the user store, JWT issuer, and password reset service used by these endpoints. */
+    public AuthController(UserRepository userRepository, JwtService jwtService,
+                           PasswordResetService passwordResetService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.passwordResetService = passwordResetService;
     }
 
     /** Liveness check that confirms the auth service is reachable. */
@@ -81,6 +87,32 @@ public class AuthController {
         String token = jwtService.generateToken(user);
 
         return ResponseEntity.ok(new AuthResponse(token, user.getEmail()));
+    }
+
+    /**
+     * Issues a password reset token if the email is registered. Always returns the same
+     * response either way, so this endpoint cannot be used to enumerate accounts.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        userRepository.findByEmail(request.getEmail())
+                .ifPresent(passwordResetService::requestReset);
+
+        return ResponseEntity.ok(Map.of("message",
+                "If that email is registered, a password reset link has been sent."));
+    }
+
+    /** Exchanges a valid reset token for a new password, rejecting unknown/expired/used tokens. */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        boolean reset = passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+
+        if (!reset) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("INVALID_RESET_TOKEN", "Reset token is invalid, expired, or already used"));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
     }
 
     /** Returns the email of the user identified by the Bearer token in the Authorization header. */
