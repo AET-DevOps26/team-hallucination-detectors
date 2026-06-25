@@ -8,6 +8,7 @@ package de.tum.devops.vibeshield.generated.api;
 import de.tum.devops.vibeshield.generated.model.Error;
 import de.tum.devops.vibeshield.generated.model.Finding;
 import de.tum.devops.vibeshield.generated.model.Scan;
+import de.tum.devops.vibeshield.generated.model.ScanComparison;
 import de.tum.devops.vibeshield.generated.model.ScanRequest;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -121,6 +122,46 @@ public interface ScansApi {
 
 
     /**
+     * GET /api/v1/scans/{scanId}/comparison : Compare this scan with the previous completed scan
+     * Compares the selected completed scan with the latest previous completed scan for the same website.
+     *
+     * @param scanId ID of a scan belonging to one of the user&#39;s websites. (required)
+     * @return Comparison result and prioritized action plan. (status code 200)
+     *         or Missing, expired, or invalid Bearer token (&#x60;UNAUTHORIZED&#x60;, &#x60;INVALID_TOKEN&#x60;). (status code 401)
+     *         or Resource does not exist or belongs to another user (&#x60;WEBSITE_NOT_FOUND&#x60;, &#x60;SCAN_NOT_FOUND&#x60;). (status code 404)
+     */
+    @Operation(
+        operationId = "getScanComparison",
+        summary = "Compare this scan with the previous completed scan",
+        description = "Compares the selected completed scan with the latest previous completed scan for the same website.",
+        tags = { "Scans" },
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Comparison result and prioritized action plan.", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ScanComparison.class))
+            }),
+            @ApiResponse(responseCode = "401", description = "Missing, expired, or invalid Bearer token (`UNAUTHORIZED`, `INVALID_TOKEN`).", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
+            }),
+            @ApiResponse(responseCode = "404", description = "Resource does not exist or belongs to another user (`WEBSITE_NOT_FOUND`, `SCAN_NOT_FOUND`).", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
+            })
+        },
+        security = {
+            @SecurityRequirement(name = "bearerAuth")
+        }
+    )
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = "/api/v1/scans/{scanId}/comparison",
+        produces = { "application/json" }
+    )
+    
+    ResponseEntity<ScanComparison> getScanComparison(
+        @Parameter(name = "scanId", description = "ID of a scan belonging to one of the user's websites.", required = true, in = ParameterIn.PATH) @PathVariable("scanId") Long scanId
+    );
+
+
+    /**
      * GET /api/v1/scans/{scanId}/findings : List the findings of a scan
      * Empty until the scan status is &#x60;Completed&#x60;.
      *
@@ -195,6 +236,50 @@ public interface ScansApi {
     
     ResponseEntity<List<Scan>> listScans(
         @Parameter(name = "websiteId", description = "ID of a website registered by the authenticated user.", required = true, in = ParameterIn.PATH) @PathVariable("websiteId") Long websiteId
+    );
+
+
+    /**
+     * POST /api/v1/scans/{scanId}/rescan : Rerun a scan using the same configuration
+     * Creates a new Pending scan for the same website and scan configuration as the selected scan.
+     *
+     * @param scanId ID of a scan belonging to one of the user&#39;s websites. (required)
+     * @return Rescan accepted for background execution. (status code 202)
+     *         or Missing, expired, or invalid Bearer token (&#x60;UNAUTHORIZED&#x60;, &#x60;INVALID_TOKEN&#x60;). (status code 401)
+     *         or Resource does not exist or belongs to another user (&#x60;WEBSITE_NOT_FOUND&#x60;, &#x60;SCAN_NOT_FOUND&#x60;). (status code 404)
+     *         or A scan for this website is already &#x60;Pending&#x60; or &#x60;Running&#x60; (&#x60;SCAN_IN_PROGRESS&#x60;). (status code 409)
+     */
+    @Operation(
+        operationId = "rescan",
+        summary = "Rerun a scan using the same configuration",
+        description = "Creates a new Pending scan for the same website and scan configuration as the selected scan.",
+        tags = { "Scans" },
+        responses = {
+            @ApiResponse(responseCode = "202", description = "Rescan accepted for background execution.", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Scan.class))
+            }),
+            @ApiResponse(responseCode = "401", description = "Missing, expired, or invalid Bearer token (`UNAUTHORIZED`, `INVALID_TOKEN`).", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
+            }),
+            @ApiResponse(responseCode = "404", description = "Resource does not exist or belongs to another user (`WEBSITE_NOT_FOUND`, `SCAN_NOT_FOUND`).", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
+            }),
+            @ApiResponse(responseCode = "409", description = "A scan for this website is already `Pending` or `Running` (`SCAN_IN_PROGRESS`).", content = {
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
+            })
+        },
+        security = {
+            @SecurityRequirement(name = "bearerAuth")
+        }
+    )
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = "/api/v1/scans/{scanId}/rescan",
+        produces = { "application/json" }
+    )
+    
+    ResponseEntity<Scan> rescan(
+        @Parameter(name = "scanId", description = "ID of a scan belonging to one of the user's websites.", required = true, in = ParameterIn.PATH) @PathVariable("scanId") Long scanId
     );
 
 

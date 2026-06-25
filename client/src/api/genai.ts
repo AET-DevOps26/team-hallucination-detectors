@@ -10,7 +10,7 @@ import type { Finding } from "../types/domain";
 /** The finding fields the GenAI service needs to write a fix prompt. */
 export type FixPromptInput = Pick<
   Finding,
-  "title" | "severity" | "check" | "affected" | "summary" | "impact"
+  "title" | "severity" | "checkLabel" | "affected" | "summary" | "impact"
 >;
 
 /**
@@ -26,7 +26,7 @@ export async function generateFixPrompt(
     {
       title: finding.title,
       severity: finding.severity,
-      check: finding.check,
+      check: finding.checkLabel,
       affected: finding.affected,
       summary: finding.summary,
       impact: finding.impact,

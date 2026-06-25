@@ -3,9 +3,11 @@ package de.tum.devops.vibeshield.controller;
 import de.tum.devops.vibeshield.generated.api.ScansApi;
 import de.tum.devops.vibeshield.generated.model.Finding;
 import de.tum.devops.vibeshield.generated.model.Scan;
+import de.tum.devops.vibeshield.generated.model.ScanComparison;
 import de.tum.devops.vibeshield.generated.model.ScanRequest;
 import de.tum.devops.vibeshield.mapper.ScanMapper;
 import de.tum.devops.vibeshield.security.CurrentUser;
+import de.tum.devops.vibeshield.service.RescanService;
 import de.tum.devops.vibeshield.service.ScanService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +25,12 @@ import java.util.List;
 public class ScanController implements ScansApi {
 
     private final ScanService scanService;
+    private final RescanService rescanService;
     private final CurrentUser currentUser;
 
-    public ScanController(ScanService scanService, CurrentUser currentUser) {
+    public ScanController(ScanService scanService, RescanService rescanService, CurrentUser currentUser) {
         this.scanService = scanService;
+        this.rescanService = rescanService;
         this.currentUser = currentUser;
     }
 
@@ -67,5 +71,18 @@ public class ScanController implements ScansApi {
                 .map(ScanMapper::toModel)
                 .toList();
         return ResponseEntity.ok(findings);
+    }
+
+    @Override
+    public ResponseEntity<Scan> rescan(Long scanId) {
+        var scan = rescanService.rescan(currentUser.require(), scanId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .location(URI.create("/api/v1/scans/" + scan.getId()))
+                .body(toModelWithCount(scan));
+    }
+
+    @Override
+    public ResponseEntity<ScanComparison> getScanComparison(Long scanId) {
+        return ResponseEntity.ok(ScanMapper.toModel(rescanService.compareWithPrevious(currentUser.require(), scanId)));
     }
 }

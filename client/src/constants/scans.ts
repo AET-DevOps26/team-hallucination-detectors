@@ -17,6 +17,15 @@ export const scanLabels: Record<ScanOption, string> = {
   sensitiveFiles: "Sensitive files and backups",
 };
 
+export const scanCategoryStyles: Record<ScanOption, string> = {
+  crawl: "border-cyan-300 bg-cyan-50 text-cyan-800",
+  https: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  headers: "border-indigo-300 bg-indigo-50 text-indigo-800",
+  adminPaths: "border-fuchsia-300 bg-fuchsia-50 text-fuchsia-800",
+  secrets: "border-rose-300 bg-rose-50 text-rose-800",
+  sensitiveFiles: "border-amber-300 bg-amber-50 text-amber-800",
+};
+
 export const severityStyles: Record<Severity, string> = {
   Critical: "border-red-700 bg-red-50 text-red-800",
   High: "border-orange-600 bg-orange-50 text-orange-800",

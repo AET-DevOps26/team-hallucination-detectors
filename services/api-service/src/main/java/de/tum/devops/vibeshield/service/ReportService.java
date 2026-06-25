@@ -71,8 +71,8 @@ public class ReportService {
         List<Finding> ordered = findings.stream()
                 .sorted(Comparator
                         .comparing((Finding finding) -> finding.getStatus() == FindingStatus.OPEN ? 0 : 1)
-                        .thenComparingInt(finding -> severityRank(finding.getSeverity()))
-                        .thenComparingInt(finding -> checkRank(finding.getCheckType()))
+                        .thenComparingInt(finding -> FindingPrioritization.severityRank(finding.getSeverity()))
+                        .thenComparingInt(finding -> FindingPrioritization.checkRank(finding.getCheckType()))
                         .thenComparing(Finding::getId))
                 .toList();
 
@@ -90,7 +90,7 @@ public class ReportService {
                     finding.getSuggestedFix(),
                     finding.getStatus(),
                     suggestedFixOrder,
-                    effortFor(finding)
+                    FindingPrioritization.effortFor(finding)
             ));
         }
         return List.copyOf(reportFindings);
@@ -160,7 +160,7 @@ public class ReportService {
 
         String highestSeverity = matching.stream()
                 .map(ReportFinding::severity)
-                .min(Comparator.comparingInt(this::severityRank))
+                .min(Comparator.comparingInt(FindingPrioritization::severityRank))
                 .map(Severity::getValue)
                 .orElse("Open");
         return new LaunchChecklistItem(label, "Needs attention", true,
@@ -212,40 +212,4 @@ public class ReportService {
         return "Low";
     }
 
-    private EffortEstimate effortFor(Finding finding) {
-        if (finding.getCheckType() == ScanCheck.SECRETS) {
-            return new EffortEstimate("High", "Half day to 1 day");
-        }
-        if (finding.getCheckType() == ScanCheck.SENSITIVE_FILES || finding.getCheckType() == ScanCheck.ADMIN_PATHS) {
-            return new EffortEstimate("Medium", "1-3 hours");
-        }
-        if (finding.getSeverity() == Severity.CRITICAL || finding.getSeverity() == Severity.HIGH) {
-            return new EffortEstimate("Medium", "1-2 hours");
-        }
-        if (finding.getCheckType() == ScanCheck.HEADERS) {
-            return new EffortEstimate("Low", "30-90 minutes");
-        }
-        return new EffortEstimate("Low", "30-60 minutes");
-    }
-
-    private int severityRank(Severity severity) {
-        return switch (severity) {
-            case CRITICAL -> 0;
-            case HIGH -> 1;
-            case MEDIUM -> 2;
-            case LOW -> 3;
-            case INFO -> 4;
-        };
-    }
-
-    private int checkRank(ScanCheck check) {
-        return switch (check) {
-            case HTTPS -> 0;
-            case HEADERS -> 1;
-            case SECRETS -> 2;
-            case SENSITIVE_FILES -> 3;
-            case ADMIN_PATHS -> 4;
-            case CRAWL -> 5;
-        };
-    }
 }
