@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vibeshield-auth-rewrite
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /api/v1/auth/$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.global.host }}
+      secretName: vibeshield-tls
+  rules:
+    - host: {{ .Values.global.host }}
+      http:
+        paths:
+          - path: /auth(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 80

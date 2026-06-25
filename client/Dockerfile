@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 FROM node:24-alpine AS build
 WORKDIR /app
-ARG VITE_API_BASE_URL=http://localhost:8080
-ARG VITE_AUTH_BASE_URL=http://localhost:8081
+ARG VITE_API_BASE_URL=""
+ARG VITE_AUTH_BASE_URL=/auth
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_AUTH_BASE_URL=$VITE_AUTH_BASE_URL
 COPY package.json package-lock.json* ./
