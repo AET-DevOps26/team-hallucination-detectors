@@ -56,10 +56,29 @@ export function AnalysisDetailPage({
   }
 
   const severityCounts = getSeverityCounts(analysis.findings);
+  const inProgress = analysis.status === "Pending" || analysis.status === "Running";
 
   return (
     <main className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="space-y-5">
+        {inProgress && (
+          <div className="flex items-start gap-3 rounded-md border border-teal-200 bg-teal-50 px-4 py-3">
+            <svg className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-teal-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-teal-800">
+                {analysis.status === "Pending" ? "Scan queued" : "Scan running"}
+              </p>
+              <p className="mt-0.5 text-sm text-teal-700">
+                {analysis.status === "Pending"
+                  ? "Your scan is queued and will start shortly. This page updates automatically."
+                  : "VibeShield is checking your site for security issues. Results will appear here when the scan finishes — usually under a minute."}
+              </p>
+            </div>
+          </div>
+        )}
         <AnalysisHeader analysis={analysis} navigate={navigate} counts={severityCounts} />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)]">
           <div className="space-y-3">
@@ -129,11 +148,15 @@ function AnalysisHeader({
  * Replit). The user never reads or writes code — the same kind of AI that built
  * the site repairs it.
  */
+const AI_BUILDERS = ["Generic", "Lovable", "Cursor", "v0", "Bolt", "Replit"] as const;
+type AiBuilder = (typeof AI_BUILDERS)[number];
+
 function GenerateFixPrompt({ finding }: { finding?: Finding }) {
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [builder, setBuilder] = useState<AiBuilder>("Generic");
 
   // A different finding is a different prompt — clear any stale output.
   useEffect(() => {
@@ -149,7 +172,7 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
     setError("");
     setCopied(false);
     try {
-      const result = await generateFixPrompt(finding);
+      const result = await generateFixPrompt(finding, builder);
       setPrompt(result);
       setStatus("idle");
     } catch (err) {
@@ -194,6 +217,22 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
             <p className="mt-1 truncate text-xs text-zinc-500">
               {finding.affected}
             </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-zinc-600" htmlFor="builder-select">
+              AI builder
+            </label>
+            <select
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              id="builder-select"
+              onChange={(e) => setBuilder(e.target.value as AiBuilder)}
+              value={builder}
+            >
+              {AI_BUILDERS.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
           </div>
 
           <button

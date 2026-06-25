@@ -37,6 +37,7 @@ class FixPromptRequest(BaseModel):
     affected: str = ""
     summary: str = ""
     impact: str = ""
+    builder: str = "Generic"
 
 
 class FixPromptResponse(BaseModel):
@@ -107,6 +108,7 @@ async def fix_prompt(request: FixPromptRequest):
             "affected": request.affected or "n/a",
             "summary": request.summary or "n/a",
             "impact": request.impact or "n/a",
+            "builder": request.builder or "Generic",
         }
     )
 

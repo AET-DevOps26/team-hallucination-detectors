@@ -15,6 +15,8 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
 
 # Background scan execution: where the scanner-service lives and how often the
 # worker polls for Pending scans. The scans table is the work queue.
@@ -51,6 +53,6 @@ management:
 
 springdoc:
   swagger-ui:
-    path: /swagger-ui.html
+    path: /api/swagger-ui.html
   api-docs:
-    path: /v3/api-docs
+    path: /api/v3/api-docs

@@ -1,0 +1,28 @@
+#!/bin/sh
+# Lint the OpenAPI specs before every commit.
+# Mirrors the `openapi (lint + drift check)` CI job so spec errors are caught locally.
+
+if ! command -v node > /dev/null 2>&1; then
+  echo "pre-commit: node not found — skipping OpenAPI lint"
+  exit 0
+fi
+
+NODE_MAJOR=$(node -e "process.stdout.write(String(process.versions.node.split('.')[0]))")
+if [ "$NODE_MAJOR" -lt 20 ]; then
+  echo "pre-commit: Node $NODE_MAJOR detected (need >=20) — skipping OpenAPI lint"
+  echo "  Run: nvm use 20 && npx @redocly/cli@1 lint"
+  exit 0
+fi
+
+echo "pre-commit: linting OpenAPI specs..."
+npx --yes @redocly/cli@1 lint --quiet
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+  echo "pre-commit: OpenAPI lint failed. Fix the errors above before committing."
+  echo "  Run: npx @redocly/cli@1 lint"
+  exit 1
+fi
+
+echo "pre-commit: OpenAPI lint passed."
+exit 0

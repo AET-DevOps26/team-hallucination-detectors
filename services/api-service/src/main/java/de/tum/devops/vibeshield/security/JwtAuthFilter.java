@@ -37,6 +37,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     /** API paths that intentionally need no token (scaffold health endpoint used by the client). */
     private static final List<String> PUBLIC_API_PATHS = List.of("/api/v1/hello");
 
+    /** Swagger UI and OpenAPI spec paths — public so the tutor can browse the docs without a token. */
+    private static final List<String> SWAGGER_PATH_PREFIXES = List.of(
+            "/api/swagger-ui", "/api/v3/api-docs", "/api/webjars"
+    );
+
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
 
@@ -49,6 +54,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         if (!path.startsWith("/api/")) {
+            return true;
+        }
+        if (SWAGGER_PATH_PREFIXES.stream().anyMatch(path::startsWith)) {
             return true;
         }
         return PUBLIC_API_PATHS.contains(path);

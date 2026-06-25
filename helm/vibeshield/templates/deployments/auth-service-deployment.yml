@@ -15,5 +15,11 @@ spec:
       containers:
         - name: auth-service
           image: "{{ .Values.images.authService }}:{{ .Values.images.tag }}"
+          env:
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: APP_JWT_SECRET
           ports:
             - containerPort: 8080
