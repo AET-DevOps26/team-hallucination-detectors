@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { generateFixPrompt } from "../api/genai";
+import { downloadReport, getReportData, ReportData } from "../api/reports";
 import { FindingDetailsPanel } from "../components/analysis/FindingDetailsPanel";
 import { FindingListItem } from "../components/analysis/FindingListItem";
 import { SeveritySummary } from "../components/analysis/SeveritySummary";
@@ -30,15 +31,48 @@ export function AnalysisDetailPage({
   selectedFindingId,
   setResolutionReason,
 }: AnalysisDetailPageProps) {
+  const [report, setReport] = useState<ReportData>();
+  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [reportError, setReportError] = useState("");
   const selectedFinding =
     analysis?.findings.find((finding) => finding.id === selectedFindingId) ??
     analysis?.findings[0];
+  const reportAnalysisId = analysis?.id;
+  const reportAnalysisStatus = analysis?.status;
 
   useEffect(() => {
     if (analysis?.findings[0] && !selectedFindingId) {
       onSelectFinding(analysis.findings[0].id);
     }
   }, [analysis, onSelectFinding, selectedFindingId]);
+
+  useEffect(() => {
+    if (!reportAnalysisId || reportAnalysisStatus !== "Completed") {
+      setReport(undefined);
+      setReportStatus("idle");
+      setReportError("");
+      return;
+    }
+    let cancelled = false;
+    setReportStatus("loading");
+    setReportError("");
+    getReportData(reportAnalysisId)
+      .then((data) => {
+        if (!cancelled) {
+          setReport(data);
+          setReportStatus("idle");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setReportError(error instanceof Error ? error.message : "Could not load the report.");
+          setReportStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reportAnalysisId, reportAnalysisStatus]);
 
   if (!analysis) {
     return (
@@ -83,9 +117,169 @@ export function AnalysisDetailPage({
           )}
         </div>
       </section>
-      <GenerateFixPrompt finding={selectedFinding} />
+      <aside className="space-y-5">
+        <GenerateFixPrompt finding={selectedFinding} />
+        <ReportPanel
+          analysis={analysis}
+          report={report}
+          reportError={reportError}
+          reportStatus={reportStatus}
+        />
+      </aside>
     </main>
   );
+}
+
+function ReportPanel({
+  analysis,
+  report,
+  reportError,
+  reportStatus,
+}: {
+  analysis: Analysis;
+  report?: ReportData;
+  reportError: string;
+  reportStatus: "idle" | "loading" | "error";
+}) {
+  const [downloadStatus, setDownloadStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [downloadError, setDownloadError] = useState("");
+  const ready = analysis.status === "Completed";
+
+  async function handleDownload(kind: "summary-html" | "summary-pdf" | "full-pdf") {
+    setDownloadStatus("loading");
+    setDownloadError("");
+    try {
+      await downloadReport(analysis.id, kind);
+      setDownloadStatus("idle");
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "Could not download the report.");
+      setDownloadStatus("error");
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-zinc-300 bg-white p-5">
+      <h2 className="text-xl font-semibold">Reports</h2>
+      <p className="mt-1 text-sm text-zinc-600">
+        Export an executive summary or a full scan report for launch review.
+      </p>
+
+      {!ready && (
+        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
+          Reports are available after this scan completes.
+        </p>
+      )}
+
+      {ready && reportStatus === "loading" && (
+        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
+          Preparing report preview…
+        </p>
+      )}
+
+      {ready && reportStatus === "error" && (
+        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+          {reportError}
+        </p>
+      )}
+
+      {ready && report && (
+        <div className="mt-4 space-y-4">
+          <div className="rounded-md border border-zinc-200 p-3">
+            <p className="text-xs font-semibold uppercase text-zinc-500">Safe to launch</p>
+            <p className="mt-1 text-lg font-semibold text-zinc-900">{report.safeToLaunch.status}</p>
+            <p className="text-sm text-zinc-600">
+              {report.safeToLaunch.blockingIssues} checklist item
+              {report.safeToLaunch.blockingIssues === 1 ? "" : "s"} need attention.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-zinc-800">Checklist</p>
+            <ul className="mt-2 space-y-2">
+              {report.safeToLaunch.items.map((item) => (
+                <li className="rounded-md border border-zinc-200 p-2 text-sm" key={item.label}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium text-zinc-800">{item.label}</span>
+                    <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${checklistResultClass(item.result)}`}>
+                      {item.result}
+                    </span>
+                  </div>
+                  <span>
+                    <span className="block text-xs text-zinc-500">{item.reason}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-zinc-800">Next steps</p>
+            {report.executiveSummary.recommendedNextSteps.length === 0 ? (
+              <p className="mt-2 text-sm text-zinc-500">No open findings require action.</p>
+            ) : (
+              <ol className="mt-2 space-y-2">
+                {report.executiveSummary.recommendedNextSteps.slice(0, 3).map((step) => (
+                  <li className="text-sm" key={`${step.order}-${step.title}`}>
+                    <span className="font-medium text-zinc-800">
+                      {step.order}. {step.title}
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {step.severity} · {step.effort.level} · {step.effort.estimate}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="grid gap-2">
+            <button
+              className="rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={downloadStatus === "loading"}
+              onClick={() => handleDownload("summary-pdf")}
+              type="button"
+            >
+              Summary PDF
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={downloadStatus === "loading"}
+                onClick={() => handleDownload("summary-html")}
+                type="button"
+              >
+                HTML
+              </button>
+              <button
+                className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={downloadStatus === "loading"}
+                onClick={() => handleDownload("full-pdf")}
+                type="button"
+              >
+                Full PDF
+              </button>
+            </div>
+          </div>
+
+          {downloadStatus === "error" && (
+            <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+              {downloadError}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function checklistResultClass(result: string) {
+  if (result === "Pass") {
+    return "bg-emerald-50 text-emerald-800";
+  }
+  if (result === "Needs attention" || result === "Incomplete") {
+    return "bg-red-50 text-red-800";
+  }
+  return "bg-zinc-100 text-zinc-600";
 }
 
 function AnalysisHeader({
