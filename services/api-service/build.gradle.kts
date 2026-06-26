@@ -33,7 +33,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     // Bean-validation annotations referenced by the generated models.
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0")
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Persistence: Flyway owns the schema (documented in src/main/resources/db/migration),
