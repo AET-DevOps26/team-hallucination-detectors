@@ -22,7 +22,13 @@ jobs:
         script: |
           cd ~/app && docker compose down || true
           rm -rf ~/app
-          mkdir -p ~/app
+          mkdir -p ~/app/gateway/certs
+          if [ ! -f ~/certs/gateway.crt ]; then
+            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+              -keyout ~/certs/gateway.key -out ~/certs/gateway.crt \
+              -subj '/CN=vibeshield' 2>/dev/null
+          fi
+          cp ~/certs/gateway.crt ~/certs/gateway.key ~/app/gateway/certs/ 2>/dev/null || true
 
     - name: Copy Files to Azure VM via SCP
       uses: appleboy/scp-action@v0.1.7
