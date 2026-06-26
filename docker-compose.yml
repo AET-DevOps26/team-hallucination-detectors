@@ -64,7 +64,7 @@ services:
     environment:
       POSTGRES_DB: vibeshield
       POSTGRES_USER: vibeshield
-      POSTGRES_PASSWORD: vibeshield
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
