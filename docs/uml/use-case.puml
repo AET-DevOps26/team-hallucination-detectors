@@ -1,0 +1,69 @@
+@startuml Use Case Diagram
+!theme plain
+skinparam defaultFontSize 13
+skinparam usecaseBackgroundColor #EEF4FF
+skinparam actorBackgroundColor #F1F8F1
+
+title VibeShield — Use Case Diagram
+
+actor "Vibecoder\n(User)" as User
+actor "AI Builder\n(Lovable / Cursor / v0)" as AIBuilder
+actor "Scheduler\n(System)" as Scheduler
+
+rectangle "VibeShield" {
+
+  package "Authentication" {
+    usecase "Register account" as UC1
+    usecase "Log in" as UC2
+    usecase "Reset password" as UC3
+  }
+
+  package "Website Management" {
+    usecase "Register website" as UC4
+    usecase "View registered websites" as UC5
+    usecase "Delete website" as UC6
+  }
+
+  package "Security Scanning" {
+    usecase "Trigger manual scan" as UC7
+    usecase "View scan history" as UC8
+    usecase "View scan findings\n(sorted by severity)" as UC9
+    usecase "Re-scan website" as UC10
+  }
+
+  package "AI Fix Prompts" {
+    usecase "Generate fix prompt\nfor finding" as UC11
+    usecase "Copy prompt to\nAI builder" as UC12
+  }
+
+  package "Reporting" {
+    usecase "Export HTML report" as UC13
+    usecase "Export PDF report" as UC14
+    usecase "View executive summary" as UC15
+  }
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+User --> UC9
+User --> UC10
+User --> UC11
+UC11 ..> UC12 : <<include>>
+User --> UC13
+User --> UC14
+User --> UC15
+
+Scheduler --> UC7 : scheduled re-scan
+
+UC12 --> AIBuilder : paste prompt
+
+UC7 ..> UC9 : <<include>>
+UC10 ..> UC9 : <<include>>
+
+@enduml

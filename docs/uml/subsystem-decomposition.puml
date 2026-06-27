@@ -1,0 +1,61 @@
+@startuml Subsystem Decomposition
+!theme plain
+skinparam componentStyle rectangle
+skinparam defaultFontSize 13
+skinparam ArrowColor #555555
+skinparam componentBackgroundColor #EEF4FF
+skinparam databaseBackgroundColor #FFF8E1
+skinparam nodeBackgroundColor #F1F8F1
+
+title VibeShield — Subsystem Decomposition
+
+actor "Vibecoder\n(non-technical user)" as User
+
+node "Browser" {
+  component "React Frontend\n(Vite + TypeScript)" as Frontend
+}
+
+node "Nginx Gateway" as Gateway {
+}
+
+node "Kubernetes Cluster (ge65poj)" {
+
+  package "Application Services" {
+    component "Auth Service\n(Spring Boot 3 / Java 21)\n──────────────────\nUser registration & login\nJWT issuance\nPassword reset" as AuthSvc
+
+    component "API Service\n(Spring Boot 3 / Java 21)\n──────────────────\nWebsite management\nScan orchestration\nFinding storage\nReport generation" as ApiSvc
+
+    component "Scanner Service\n(Spring Boot 3 / Java 21)\n──────────────────\nHTTPS check\nSecurity headers check\nSensitive files check\nSSRF-safe HTTP fetching" as ScannerSvc
+
+    component "GenAI Service\n(Python 3.12 / FastAPI)\n──────────────────\nFix-prompt generation\nOpenAI / local LLM\nLangChain orchestration" as LangchainSvc
+  }
+
+  database "PostgreSQL 16\n──────────────\nusers\nwebsites\nscans\nfindings" as DB
+
+  package "Monitoring" {
+    component "Prometheus" as Prom
+    component "Grafana" as Graf
+    component "Loki" as Loki
+  }
+}
+
+User --> Frontend : HTTPS
+Frontend --> Gateway : HTTPS
+Gateway --> Frontend : static assets
+Gateway --> AuthSvc : /auth/*
+Gateway --> ApiSvc : /api/*
+Gateway --> LangchainSvc : /langchain/*
+
+ApiSvc --> ScannerSvc : REST (internal)\nPOST /scan
+ApiSvc --> LangchainSvc : REST (internal)\nPOST /generate-prompt
+ApiSvc --> DB : JPA / JDBC
+AuthSvc --> DB : JPA / JDBC
+
+Prom --> ApiSvc : scrape /actuator/prometheus
+Prom --> AuthSvc : scrape /actuator/prometheus
+Prom --> ScannerSvc : scrape /actuator/prometheus
+Prom --> LangchainSvc : scrape /metrics
+Graf --> Prom : query
+Graf --> Loki : query logs
+
+@enduml
