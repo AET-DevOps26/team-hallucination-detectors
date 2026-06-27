@@ -104,8 +104,7 @@ jobs:
 
       - name: Deploy monitoring stack
         run: |
-          kubectl apply -f k8s/monitoring/namespace.yml
-          kubectl apply -f k8s/monitoring/rbac.yml
+          kubectl create serviceaccount prometheus -n ge65poj --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f k8s/monitoring/prometheus-configmap.yml
           kubectl apply -f k8s/monitoring/prometheus-pvc.yml
           kubectl apply -f k8s/monitoring/prometheus-deployment.yml

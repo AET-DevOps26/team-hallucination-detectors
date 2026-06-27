@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: loki
-  namespace: monitoring
+  namespace: ge65poj
   labels:
     app: loki
 spec:
@@ -25,7 +25,7 @@ spec:
         - name: loki
           image: grafana/loki:3.0.0
           args:
-            - -config.file=/etc/loki/local-config.yaml
+            - -config.file=/etc/loki/loki-config.yaml
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

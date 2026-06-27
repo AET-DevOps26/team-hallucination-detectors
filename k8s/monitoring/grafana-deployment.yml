@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: monitoring
+  namespace: ge65poj
   labels:
     app: grafana
 spec:
@@ -58,8 +58,7 @@ spec:
             - name: dashboard-provider
               mountPath: /etc/grafana/provisioning/dashboards
             - name: dashboards
-              mountPath: /etc/grafana/provisioning/dashboards/vibeshield.json
-              subPath: vibeshield.json
+              mountPath: /var/lib/grafana/dashboards
           resources:
             limits:
               memory: "256Mi"
