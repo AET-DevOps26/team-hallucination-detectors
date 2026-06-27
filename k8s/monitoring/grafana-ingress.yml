@@ -4,9 +4,14 @@ metadata:
   name: grafana-ingress
   namespace: ge65poj
   annotations:
+    cert-manager.io/issuer: letsencrypt
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - ge65poj-monitoring.stud.k8s.aet.cit.tum.de
+      secretName: grafana-tls
   rules:
     - host: ge65poj-monitoring.stud.k8s.aet.cit.tum.de
       http:
