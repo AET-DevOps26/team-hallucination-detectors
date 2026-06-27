@@ -30,10 +30,10 @@
         }
       },
       "targets": [
-        { "expr": "up{job=\"api-service\"}", "legendFormat": "api-service", "refId": "A" },
-        { "expr": "up{job=\"auth-service\"}", "legendFormat": "auth-service", "refId": "B" },
-        { "expr": "up{job=\"scanner-service\"}", "legendFormat": "scanner-service", "refId": "C" },
-        { "expr": "up{job=\"langchain-service\"}", "legendFormat": "langchain-service", "refId": "D" }
+        { "expr": "last_over_time(up{job=\"api-service\"}[2m])", "legendFormat": "api-service", "refId": "A" },
+        { "expr": "last_over_time(up{job=\"auth-service\"}[2m])", "legendFormat": "auth-service", "refId": "B" },
+        { "expr": "last_over_time(up{job=\"scanner-service\"}[2m])", "legendFormat": "scanner-service", "refId": "C" },
+        { "expr": "last_over_time(up{job=\"langchain-service\"}[2m])", "legendFormat": "langchain-service", "refId": "D" }
       ],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
