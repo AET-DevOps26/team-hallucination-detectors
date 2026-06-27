@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/rules.yml
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: [localhost:9090]
+
+      - job_name: api-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: [api-service.ge65poj.svc.cluster.local:8080]
+
+      - job_name: auth-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: [auth-service.ge65poj.svc.cluster.local:8080]
+
+      - job_name: scanner-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: [scanner-service.ge65poj.svc.cluster.local:8080]
+
+      - job_name: langchain-service
+        metrics_path: /metrics
+        static_configs:
+          - targets: [langchain-service.ge65poj.svc.cluster.local:8000]
+
+  rules.yml: |
+    groups:
+      - name: vibeshield
+        rules:
+          - alert: ServiceDown
+            expr: up == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service {{ $labels.job }} is down"
+              description: "{{ $labels.job }} has been unreachable for more than 1 minute."
+
+          - alert: HighErrorRate
+            expr: |
+              sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (job)
+              /
+              sum(rate(http_server_requests_seconds_count[5m])) by (job)
+              > 0.05
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High 5xx error rate on {{ $labels.job }}"
+              description: "More than 5% of requests to {{ $labels.job }} are returning 5xx errors."
+
+          - alert: SlowResponseTime
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_server_requests_seconds_bucket[5m])) by (job, le)
+              ) > 2
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Slow P95 response time on {{ $labels.job }}"
+              description: "95th percentile response time on {{ $labels.job }} exceeded 2 seconds."

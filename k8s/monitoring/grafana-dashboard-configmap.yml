@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  vibeshield.json: |
+    {
+      "id": null,
+      "uid": "vibeshield-overview",
+      "title": "VibeShield Overview",
+      "tags": ["vibeshield"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Service Health",
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            }
+          },
+          "targets": [
+            { "expr": "up{job=\"api-service\"}", "legendFormat": "api-service", "refId": "A" },
+            { "expr": "up{job=\"auth-service\"}", "legendFormat": "auth-service", "refId": "B" },
+            { "expr": "up{job=\"scanner-service\"}", "legendFormat": "scanner-service", "refId": "C" },
+            { "expr": "up{job=\"langchain-service\"}", "legendFormat": "langchain-service", "refId": "D" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Request Rate (req/s)",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            { "expr": "sum(rate(http_server_requests_seconds_count{job=\"api-service\"}[5m]))", "legendFormat": "api-service", "refId": "A" },
+            { "expr": "sum(rate(http_server_requests_seconds_count{job=\"auth-service\"}[5m]))", "legendFormat": "auth-service", "refId": "B" },
+            { "expr": "sum(rate(http_server_requests_seconds_count{job=\"scanner-service\"}[5m]))", "legendFormat": "scanner-service", "refId": "C" },
+            { "expr": "sum(rate(http_requests_total{job=\"langchain-service\"}[5m]))", "legendFormat": "langchain-service", "refId": "D" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "5xx Error Rate (req/s)",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            { "expr": "sum(rate(http_server_requests_seconds_count{job=\"api-service\",status=~\"5..\"}[5m]))", "legendFormat": "api-service", "refId": "A" },
+            { "expr": "sum(rate(http_server_requests_seconds_count{job=\"scanner-service\",status=~\"5..\"}[5m]))", "legendFormat": "scanner-service", "refId": "C" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "P95 Latency (seconds)",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"api-service\"}[5m])) by (le))", "legendFormat": "api-service p95", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"auth-service\"}[5m])) by (le))", "legendFormat": "auth-service p95", "refId": "B" },
+            { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"scanner-service\"}[5m])) by (le))", "legendFormat": "scanner-service p95", "refId": "C" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "JVM Heap Memory",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [
+            { "expr": "jvm_memory_used_bytes{job=\"api-service\",area=\"heap\"}", "legendFormat": "api-service", "refId": "A" },
+            { "expr": "jvm_memory_used_bytes{job=\"auth-service\",area=\"heap\"}", "legendFormat": "auth-service", "refId": "B" },
+            { "expr": "jvm_memory_used_bytes{job=\"scanner-service\",area=\"heap\"}", "legendFormat": "scanner-service", "refId": "C" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ]
+    }

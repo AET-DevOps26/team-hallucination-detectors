@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.chains import build_chat_chain, build_fix_prompt_chain
 from app.settings import settings
 
@@ -15,6 +17,8 @@ from app.settings import settings
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name)
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 chat_chain = build_chat_chain()
 fix_prompt_chain = build_fix_prompt_chain()
