@@ -1,69 +1,56 @@
-@startuml Use Case Diagram
-!theme plain
-skinparam defaultFontSize 13
-skinparam usecaseBackgroundColor #EEF4FF
-skinparam actorBackgroundColor #F1F8F1
+@startuml VibeShield-UseCase
+' =====================================================================
+'  VibeShield - Use Case Diagram
+'  Scope: ONLY capabilities implemented on `main` (verified 2026-06-28).
+'  Deferred features (code/repo scanning, active OWASP probing,
+'  self-hosted/local LLM) are intentionally NOT shown.
+'  Auth is the self-contained JWT auth-service - NOT Keycloak (docs/auth.md).
+' =====================================================================
 
-title VibeShield — Use Case Diagram
+left to right direction
+skinparam actorStyle awesome
+skinparam shadowing false
+skinparam nodesep 12
+skinparam ranksep 60
+skinparam packageStyle rectangle
 
-actor "Vibecoder\n(User)" as User
-actor "AI Builder\n(Lovable / Cursor / v0)" as AIBuilder
-actor "Scheduler\n(System)" as Scheduler
+actor "Vibecoder\n(non-technical\nsite owner)" as User
 
-rectangle "VibeShield" {
-
-  package "Authentication" {
-    usecase "Register account" as UC1
-    usecase "Log in" as UC2
-    usecase "Reset password" as UC3
-  }
-
-  package "Website Management" {
-    usecase "Register website" as UC4
-    usecase "View registered websites" as UC5
-    usecase "Delete website" as UC6
-  }
-
-  package "Security Scanning" {
-    usecase "Trigger manual scan" as UC7
-    usecase "View scan history" as UC8
-    usecase "View scan findings\n(sorted by severity)" as UC9
-    usecase "Re-scan website" as UC10
-  }
-
-  package "AI Fix Prompts" {
-    usecase "Generate fix prompt\nfor finding" as UC11
-    usecase "Copy prompt to\nAI builder" as UC12
-  }
-
-  package "Reporting" {
-    usecase "Export HTML report" as UC13
-    usecase "Export PDF report" as UC14
-    usecase "View executive summary" as UC15
-  }
+rectangle "VibeShield" as VS {
+  usecase "Register"               as UC_Reg
+  usecase "Log in"                 as UC_Login
+  usecase "Add a site"             as UC_Add
+  usecase "Run a scan"             as UC_Scan
+  usecase "View findings"          as UC_View
+  usecase "Generate AI fix prompt" as UC_Fix
+  usecase "View scan history"      as UC_Hist
 }
 
-User --> UC1
-User --> UC2
-User --> UC3
-User --> UC4
-User --> UC5
-User --> UC6
-User --> UC7
-User --> UC8
-User --> UC9
-User --> UC10
-User --> UC11
-UC11 ..> UC12 : <<include>>
-User --> UC13
-User --> UC14
-User --> UC15
+' Supporting (secondary) actors are EXTERNAL SYSTEMS, not people:
+' drawn as <<system>> boxes rather than the stick-figure actor icon.
+rectangle "Target website\n(site being scanned)" <<system>> as Site
+rectangle "Cloud LLM\n(OpenAI API)"               <<system>> as LLM
 
-Scheduler --> UC7 : scheduled re-scan
+User --> UC_Reg
+User --> UC_Login
+User --> UC_Add
+User --> UC_Scan
+User --> UC_View
+User --> UC_Hist
+User --> UC_Fix
 
-UC12 --> AIBuilder : paste prompt
+' A fix prompt is generated on demand from a finding the user is viewing.
+UC_Fix ..> UC_View : <<extend>>
 
-UC7 ..> UC9 : <<include>>
-UC10 ..> UC9 : <<include>>
+UC_Scan --> Site : "HTTP probes"
+UC_Fix  --> LLM  : "prompt generation"
+
+' Stack the use cases in workflow order (purely a layout hint).
+UC_Reg  -[hidden]- UC_Login
+UC_Login -[hidden]- UC_Add
+UC_Add  -[hidden]- UC_Scan
+UC_Scan -[hidden]- UC_View
+UC_View -[hidden]- UC_Fix
+UC_Fix  -[hidden]- UC_Hist
 
 @enduml

@@ -99,7 +99,9 @@ jobs:
       - name: Deploy with Helm
         run: |
           helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
-            --set images.tag=sha-${{ github.sha }}
+            --set images.tag=sha-${{ github.sha }} \
+            --set secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
+            --set secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }}
           kubectl get pods -n ge65poj
 
       - name: Deploy monitoring stack
@@ -122,4 +124,4 @@ jobs:
           kubectl apply -f k8s/monitoring/grafana-deployment.yml
           kubectl apply -f k8s/monitoring/grafana-service.yml
           kubectl apply -f k8s/monitoring/grafana-ingress.yml
-          kubectl get pods -n monitoring
+          kubectl get pods -n ge65poj -l 'app in (prometheus,grafana,loki)'

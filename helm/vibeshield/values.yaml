@@ -17,3 +17,8 @@ database:
   user: vibeshield
   password: vibeshield
   storage: 1Gi
+
+secrets:
+  # Override via --set secrets.jwtSecret=... and --set secrets.dbPassword=... in CI
+  jwtSecret: "dev-secret-change-in-production"
+  dbPassword: vibeshield

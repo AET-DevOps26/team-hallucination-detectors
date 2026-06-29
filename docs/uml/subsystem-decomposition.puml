@@ -1,61 +1,96 @@
-@startuml Subsystem Decomposition
-!theme plain
-skinparam componentStyle rectangle
-skinparam defaultFontSize 13
-skinparam ArrowColor #555555
-skinparam componentBackgroundColor #EEF4FF
-skinparam databaseBackgroundColor #FFF8E1
-skinparam nodeBackgroundColor #F1F8F1
+@startuml VibeShield-Subsystem-Decomposition
+' =====================================================================
+'  VibeShield - Subsystem Decomposition (UML component diagram)
+'  Reflects the RUNNING system on `main` (verified 2026-06-28), not the
+'  planned design. Connections are labelled with the contract that
+'  defines them - OpenAPI-first, so most are .yaml specs under /api.
+'
+'  Honest caveats (also called out in-diagram):
+'   * Entry point is the nginx gateway / k8s Ingress - NOT the API service.
+'   * Keycloak is PLANNED, not integrated. Real auth = self-contained
+'     Spring Boot auth-service issuing HMAC JWTs (docs/auth.md).
+'   * The GenAI endpoint is a hand-written client, NOT in the OpenAPI spec.
+'   * Scanner-service is stateless (no DB); only api & auth touch Postgres.
+' =====================================================================
 
-title VibeShield — Subsystem Decomposition
+skinparam componentStyle uml2
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 75
+skinparam defaultTextAlignment center
+top to bottom direction
 
-actor "Vibecoder\n(non-technical user)" as User
+' ---- Tier 0/1: client + single entry point --------------------------
+actor "Vibecoder's\nbrowser" as Browser
+component "nginx gateway / k8s Ingress\n<<single entry point>>" as GW
 
-node "Browser" {
-  component "React Frontend\n(Vite + TypeScript)" as Frontend
+' ---- Tier 2: things the gateway routes to (SPA + provided REST) ------
+component "Frontend SPA\nReact + Vite\n(Nginx static)" as FE
+' One openapi.yaml contract (single source of truth) realised by BOTH the
+' API and Auth services; the GenAI REST seam is separate and not in the spec.
+' Path groups live on the GW->interface edges; resources live in the service
+' boxes. (PlantUML hangs interface text as a label graphviz won't reserve
+' space for, so two same-named circles side by side always collide - hence
+' the merge into one.)
+interface "openapi.yaml" as I_REST
+interface "REST/JSON\nnot in OpenAPI" as I_GEN
+
+' ---- Tier 3: the application services -------------------------------
+package "Spring Boot server side  (3 microservices)" as SB {
+  component "API service\nwebsites - scans - findings\nreports - rescan/comparison" as API
+  component "Auth service\nregister - login - JWT\npassword reset" as AUTH
+  component "Scanner service\n<<internal-only - stateless>>\nHTTPS / headers / files checks" as SCAN
 }
+component "GenAI service\nPython - FastAPI - LangChain\nfix-prompt generation" as GENAI
 
-node "Nginx Gateway" as Gateway {
+' Internal-only contract the API calls the Scanner over (not gateway-routed).
+interface "scanner-internal.yaml\nPOST /scan" as I_SCAN
+
+' ---- Tier 4: persistence + external systems -------------------------
+database "PostgreSQL 16\n(single instance)" as DB {
+  component "public schema\nwebsites - scans - findings" as PUB
+  component "auth_service schema\nusers - reset tokens" as ASC
 }
+cloud "OpenAI API\n(cloud LLM, gpt-4o-mini)" as LLM
+node  "Target website\n(the user's live site)" as TARGET
 
-node "Kubernetes Cluster (ge65poj)" {
+' ---- Provided REST interfaces (component offers the contract) -------
+' Gateway-facing contracts sit on a rank BETWEEN the gateway and the services
+' it routes to, so GW -> interface -> service flows straight down without
+' piling up. SCAN provides the internal contract the API consumes.
+I_REST -down- API
+I_REST -down- AUTH
+I_GEN  -down- GENAI
+SCAN   -up-   I_SCAN
 
-  package "Application Services" {
-    component "Auth Service\n(Spring Boot 3 / Java 21)\n──────────────────\nUser registration & login\nJWT issuance\nPassword reset" as AuthSvc
+' ---- Routing: browser -> gateway -> providers (by URL path) ---------
+Browser --> GW : HTTPS
+GW --> FE     : " /  (serves SPA)"
+GW --> I_REST : " /api, /api/v1/auth, /auth"
+GW --> I_GEN  : " /langchain"
 
-    component "API Service\n(Spring Boot 3 / Java 21)\n──────────────────\nWebsite management\nScan orchestration\nFinding storage\nReport generation" as ApiSvc
+' ---- Internal / outbound dependencies -------------------------------
+' No label on this one: the interface circle already names the contract, and
+' a label here would land on the package border the edge crosses.
+API   --> I_SCAN
+API   --> PUB    : "JPA / JDBC"
+AUTH  --> ASC    : "JPA / JDBC"
+SCAN  --> TARGET : "HTTP probes"
+GENAI --> LLM    : "HTTPS"
 
-    component "Scanner Service\n(Spring Boot 3 / Java 21)\n──────────────────\nHTTPS check\nSecurity headers check\nSensitive files check\nSSRF-safe HTTP fetching" as ScannerSvc
+' Keep the SPA + the two interfaces on one rank in routing order.
+FE -[hidden]right- I_REST
+I_REST -[hidden]right- I_GEN
 
-    component "GenAI Service\n(Python 3.12 / FastAPI)\n──────────────────\nFix-prompt generation\nOpenAI / local LLM\nLangChain orchestration" as LangchainSvc
-  }
-
-  database "PostgreSQL 16\n──────────────\nusers\nwebsites\nscans\nfindings" as DB
-
-  package "Monitoring" {
-    component "Prometheus" as Prom
-    component "Grafana" as Graf
-    component "Loki" as Loki
-  }
+' ---- PLANNED, NOT INTEGRATED (kept separate so it can't read as "done")
+frame "Planned - NOT in the running system" as PLANNED {
+  component "Keycloak (OIDC)\n«would replace the Auth\nservice's self-contained\nJWT seam - docs/auth.md»" as KC
 }
-
-User --> Frontend : HTTPS
-Frontend --> Gateway : HTTPS
-Gateway --> Frontend : static assets
-Gateway --> AuthSvc : /auth/*
-Gateway --> ApiSvc : /api/*
-Gateway --> LangchainSvc : /langchain/*
-
-ApiSvc --> ScannerSvc : REST (internal)\nPOST /scan
-ApiSvc --> LangchainSvc : REST (internal)\nPOST /generate-prompt
-ApiSvc --> DB : JPA / JDBC
-AuthSvc --> DB : JPA / JDBC
-
-Prom --> ApiSvc : scrape /actuator/prometheus
-Prom --> AuthSvc : scrape /actuator/prometheus
-Prom --> ScannerSvc : scrape /actuator/prometheus
-Prom --> LangchainSvc : scrape /metrics
-Graf --> Prom : query
-Graf --> Loki : query logs
+' Detail lives in the box above, so the connector carries only a tiny label.
+' Force the frame down onto the SERVICE rank (between Auth and GenAI) so it
+' sits clear of the interface circles' hanging labels one rank up.
+KC -[hidden]right- GENAI
+KC .[#gray,dashed].> AUTH : "replaces"
 
 @enduml
