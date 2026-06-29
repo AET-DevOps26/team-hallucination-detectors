@@ -59,7 +59,9 @@ Grafana runs at `http://localhost:3001` (admin / admin for local dev).
 
 ## Database schema
 
-Two logical schemas in one PostgreSQL instance:
+Two logical schemas in one PostgreSQL instance. Full ERD: [`docs/db-schema.png`](docs/db-schema.png)
+
+![ERD](docs/db-schema.png)
 
 **`auth_service` schema**
 | Table | Key columns |
