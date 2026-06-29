@@ -44,6 +44,7 @@ package "Spring Boot server side  (3 microservices)" as SB {
 }
 component "GenAI service\nPython - FastAPI - LangChain\nfix-prompt generation" as GENAI
 
+' Internal-only contract the API calls the Scanner over (not gateway-routed).
 interface "scanner-internal.yaml\nPOST /scan" as I_SCAN
 
 ' ---- Tier 4: persistence + external systems -------------------------
@@ -55,8 +56,9 @@ cloud "OpenAI API\n(cloud LLM, gpt-4o-mini)" as LLM
 node  "Target website\n(the user's live site)" as TARGET
 
 ' ---- Provided REST interfaces (component offers the contract) -------
-' Interfaces sit on a rank BETWEEN the gateway and the services it routes
-' to, so GW -> interface -> service flows straight down without piling up.
+' Gateway-facing contracts sit on a rank BETWEEN the gateway and the services
+' it routes to, so GW -> interface -> service flows straight down without
+' piling up. SCAN provides the internal contract the API consumes.
 I_REST -down- API
 I_REST -down- AUTH
 I_GEN  -down- GENAI
@@ -69,7 +71,9 @@ GW --> I_REST : " /api, /api/v1/auth, /auth"
 GW --> I_GEN  : " /langchain"
 
 ' ---- Internal / outbound dependencies -------------------------------
-API   --> I_SCAN : "runs scan"
+' No label on this one: the interface circle already names the contract, and
+' a label here would land on the package border the edge crosses.
+API   --> I_SCAN
 API   --> PUB    : "JPA / JDBC"
 AUTH  --> ASC    : "JPA / JDBC"
 SCAN  --> TARGET : "HTTP probes"
