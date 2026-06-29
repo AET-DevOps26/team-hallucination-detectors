@@ -44,6 +44,13 @@ spec:
             requests:
               memory: "512Mi"
               cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health

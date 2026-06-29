@@ -101,7 +101,8 @@ jobs:
           helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
             --set images.tag=sha-${{ github.sha }} \
             --set secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
-            --set secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }}
+            --set secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }} \
+            --set secrets.openaiApiKey=${{ secrets.OPENAI_API_KEY }}
           kubectl get pods -n ge65poj
 
       - name: Deploy monitoring stack
