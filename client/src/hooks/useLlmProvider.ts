@@ -4,8 +4,8 @@ import { createContext, useContext } from "react";
  * Which LLM backend VibeShield's GenAI calls use. Both are OpenAI-compatible:
  * - "logos": the TUM Logos gateway provided by the course.
  * - "openai": OpenAI's own API.
- * The choice is surfaced as a toggle in the Navbar and sent with each GenAI
- * request so the langchain-service knows which provider to call.
+ * The choice is surfaced as a toggle in the "Generate fix prompt" panel and sent
+ * with each GenAI request so the langchain-service knows which provider to call.
  */
 export type LlmProvider = "logos" | "openai";
 
