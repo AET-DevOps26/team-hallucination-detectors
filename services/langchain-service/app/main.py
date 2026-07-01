@@ -20,8 +20,25 @@ app = FastAPI(title=settings.app_name)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-chat_chain = build_chat_chain()
-fix_prompt_chain = build_fix_prompt_chain()
+# Chains are built lazily so the service starts and /health responds even when
+# OPENAI_API_KEY is not configured. Requests that need the model go through
+# _require_openai() first and get a clear 503 before any chain is invoked.
+_chat_chain = None
+_fix_prompt_chain = None
+
+
+def _get_chat_chain():
+    global _chat_chain
+    if _chat_chain is None:
+        _chat_chain = build_chat_chain()
+    return _chat_chain
+
+
+def _get_fix_prompt_chain():
+    global _fix_prompt_chain
+    if _fix_prompt_chain is None:
+        _fix_prompt_chain = build_fix_prompt_chain()
+    return _fix_prompt_chain
 
 
 class ChatRequest(BaseModel):
@@ -94,9 +111,18 @@ def health():
     }
 
 
+def _require_openai() -> None:
+    if not settings.openai_configured:
+        raise StarletteHTTPException(
+            status_code=503,
+            detail="OPENAI_API_KEY is not configured. Copy .env.example to .env and add your key.",
+        )
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    result = await chat_chain.ainvoke({"message": request.message})
+    _require_openai()
+    result = await _get_chat_chain().ainvoke({"message": request.message})
 
     return ChatResponse(response=result.content)
 
@@ -104,7 +130,8 @@ async def chat(request: ChatRequest):
 @app.post("/fix-prompt", response_model=FixPromptResponse)
 async def fix_prompt(request: FixPromptRequest):
     """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature)."""
-    result = await fix_prompt_chain.ainvoke(
+    _require_openai()
+    result = await _get_fix_prompt_chain().ainvoke(
         {
             "title": request.title,
             "severity": request.severity,
