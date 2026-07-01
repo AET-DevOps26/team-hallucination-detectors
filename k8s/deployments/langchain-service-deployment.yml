@@ -31,7 +31,7 @@ spec:
             - name: LOGOS_BASE_URL
               value: "https://logos.aet.cit.tum.de/v1"
             - name: LOGOS_MODEL_NAME
-              value: "gpt-4o-mini"
+              value: "openai/gpt-oss-120b"
             - name: LOGOS_API_KEY
               valueFrom:
                 secretKeyRef:

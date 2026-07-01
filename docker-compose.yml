@@ -37,7 +37,7 @@ services:
       MODEL_NAME: ${LANGCHAIN_MODEL_NAME:-gpt-4o-mini}
       LOGOS_API_KEY: ${LOGOS_API_KEY:-}
       LOGOS_BASE_URL: ${LOGOS_BASE_URL:-https://logos.aet.cit.tum.de/v1}
-      LOGOS_MODEL_NAME: ${LOGOS_MODEL_NAME:-gpt-4o-mini}
+      LOGOS_MODEL_NAME: ${LOGOS_MODEL_NAME:-openai/gpt-oss-120b}
 
   client:
     build:

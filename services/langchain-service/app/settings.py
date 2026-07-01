@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # TUM Logos gateway — OpenAI-compatible, provided by the course.
     logos_api_key: str = ""
     logos_base_url: str = "https://logos.aet.cit.tum.de/v1"
-    logos_model_name: str = "gpt-4o-mini"
+    logos_model_name: str = "openai/gpt-oss-120b"
 
     port: int = 8000
     reload: bool = False
