@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { generateFixPrompt } from "../api/genai";
+import { useLlmProvider } from "../hooks/useLlmProvider";
 import { downloadReport, getReportData, ReportData } from "../api/reports";
 import { getScanComparison, ApiScanComparison } from "../api/scans";
 import { FindingDetailsPanel } from "../components/analysis/FindingDetailsPanel";
@@ -572,6 +573,7 @@ const AI_BUILDERS = ["Generic", "Lovable", "Cursor", "v0", "Bolt", "Replit"] as 
 type AiBuilder = (typeof AI_BUILDERS)[number];
 
 function GenerateFixPrompt({ finding }: { finding?: Finding }) {
+  const { provider } = useLlmProvider();
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
@@ -592,7 +594,7 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
     setError("");
     setCopied(false);
     try {
-      const result = await generateFixPrompt(finding, builder);
+      const result = await generateFixPrompt(finding, builder, provider);
       setPrompt(result);
       setStatus("idle");
     } catch (err) {

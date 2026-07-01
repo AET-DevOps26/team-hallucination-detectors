@@ -1,4 +1,5 @@
 import { Session } from "../../types/domain";
+import { LLM_PROVIDERS, useLlmProvider } from "../../hooks/useLlmProvider";
 import { NavButton } from "../ui/NavButton";
 
 type NavbarProps = {
@@ -9,6 +10,7 @@ type NavbarProps = {
 };
 
 export function Navbar({ navigate, onLogout, route, session }: NavbarProps) {
+  const { provider, setProvider } = useLlmProvider();
   const analysisRouteActive =
     route === "/analysis" ||
     (route.startsWith("/analysis/") && route !== "/analysis/new");
@@ -40,6 +42,29 @@ export function Navbar({ navigate, onLogout, route, session }: NavbarProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <div
+          aria-label="AI provider"
+          className="flex items-center gap-0.5 rounded-md border border-zinc-300 p-0.5"
+          role="group"
+        >
+          <span className="px-1.5 text-xs font-semibold text-zinc-400">AI</span>
+          {LLM_PROVIDERS.map((p) => (
+            <button
+              aria-pressed={provider === p.value}
+              className={`rounded px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                provider === p.value
+                  ? "bg-teal-700 text-white"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+              key={p.value}
+              onClick={() => setProvider(p.value)}
+              title={`Use ${p.label} for AI generation`}
+              type="button"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         {session ? (
           <>
             <button

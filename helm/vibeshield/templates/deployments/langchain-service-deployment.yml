@@ -20,8 +20,21 @@ spec:
           env:
             - name: MODEL_NAME
               value: "{{ .Values.langchainService.modelName }}"
+            - name: OPENAI_BASE_URL
+              value: "{{ .Values.langchainService.openaiBaseUrl }}"
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: vibeshield-secrets
                   key: OPENAI_API_KEY
+                  optional: true
+            - name: LOGOS_BASE_URL
+              value: "{{ .Values.langchainService.logosBaseUrl }}"
+            - name: LOGOS_MODEL_NAME
+              value: "{{ .Values.langchainService.logosModelName }}"
+            - name: LOGOS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: LOGOS_API_KEY
+                  optional: true

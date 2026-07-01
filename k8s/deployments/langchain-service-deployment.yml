@@ -20,8 +20,21 @@ spec:
           env:
             - name: MODEL_NAME
               value: "gpt-4o-mini"
+            - name: OPENAI_BASE_URL
+              value: "https://api.openai.com/v1"
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: vibeshield-secrets
                   key: OPENAI_API_KEY
+                  optional: true
+            - name: LOGOS_BASE_URL
+              value: "https://logos.aet.cit.tum.de/v1"
+            - name: LOGOS_MODEL_NAME
+              value: "gpt-4o-mini"
+            - name: LOGOS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: LOGOS_API_KEY
+                  optional: true

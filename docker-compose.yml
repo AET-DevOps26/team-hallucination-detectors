@@ -32,8 +32,12 @@ services:
       context: ./services/langchain-service
     container_name: vibeshield-langchain
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       MODEL_NAME: ${LANGCHAIN_MODEL_NAME:-gpt-4o-mini}
+      LOGOS_API_KEY: ${LOGOS_API_KEY:-}
+      LOGOS_BASE_URL: ${LOGOS_BASE_URL:-https://logos.aet.cit.tum.de/v1}
+      LOGOS_MODEL_NAME: ${LOGOS_MODEL_NAME:-gpt-4o-mini}
 
   client:
     build:
