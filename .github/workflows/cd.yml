@@ -99,15 +99,16 @@ jobs:
       - name: Deploy with Helm
         run: |
           helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
-            --set images.tag=sha-${{ github.sha }} \
-            --set secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
-            --set secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }} \
-            --set secrets.openaiApiKey=${{ secrets.OPENAI_API_KEY }}
+            --set-string images.tag=sha-${{ github.sha }} \
+            --set-string secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
+            --set-string secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }} \
+            --set-string secrets.openaiApiKey=${{ secrets.OPENAI_API_KEY }}
           kubectl get pods -n ge65poj
 
       - name: Deploy monitoring stack
         run: |
           kubectl create serviceaccount prometheus -n ge65poj --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f k8s/monitoring/rbac.yml || true
           kubectl apply -f k8s/monitoring/prometheus-configmap.yml
           kubectl apply -f k8s/monitoring/prometheus-pvc.yml
           kubectl apply -f k8s/monitoring/prometheus-deployment.yml

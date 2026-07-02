@@ -87,7 +87,7 @@ Schema is managed by Flyway migrations in each service (`services/*/src/main/res
 - Build + test: api-service, auth-service, scanner-service (Gradle), langchain-service (pytest), client (Vitest)
 
 **CD** runs on merge to `main` (`.github/workflows/cd.yml`):
-1. Builds and pushes all service images to GHCR tagged `sha-<commit>` + `latest`
+1. Builds and pushes all service images to GHCR tagged `sha-<commit>` + `latest` (semver tags added automatically when a `v*` git tag is pushed)
 2. Deploys to Kubernetes via Helm (`helm upgrade --install vibeshield ./helm/vibeshield`)
 3. Deploys monitoring stack (`kubectl apply -f k8s/monitoring/`)
 

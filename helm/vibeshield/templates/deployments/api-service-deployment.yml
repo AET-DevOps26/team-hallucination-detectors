@@ -3,7 +3,9 @@ kind: Deployment
 metadata:
   name: api-service
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: 1
+  {{- end }}
   selector:
     matchLabels:
       app: api-service
