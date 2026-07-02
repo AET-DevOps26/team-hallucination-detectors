@@ -6,6 +6,9 @@ services:
     depends_on:
       - database
       - scanner-service
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me-minimum-32-chars-required}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -17,6 +20,9 @@ services:
     container_name: vibeshield-auth
     depends_on:
       - database
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me-minimum-32-chars-required}
 
   scanner-service:
     build:
@@ -68,7 +74,7 @@ services:
     environment:
       POSTGRES_DB: vibeshield
       POSTGRES_USER: vibeshield
-      POSTGRES_PASSWORD: vibeshield
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:

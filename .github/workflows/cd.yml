@@ -99,5 +99,31 @@ jobs:
       - name: Deploy with Helm
         run: |
           helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
-            --set images.tag=sha-${{ github.sha }}
+            --set-string images.tag=sha-${{ github.sha }} \
+            --set-string secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
+            --set-string secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }} \
+            --set-string secrets.openaiApiKey=${{ secrets.OPENAI_API_KEY }}
           kubectl get pods -n ge65poj
+
+      - name: Deploy monitoring stack
+        run: |
+          kubectl create serviceaccount prometheus -n ge65poj --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f k8s/monitoring/rbac.yml || true
+          kubectl apply -f k8s/monitoring/prometheus-configmap.yml
+          kubectl apply -f k8s/monitoring/prometheus-pvc.yml
+          kubectl apply -f k8s/monitoring/prometheus-deployment.yml
+          kubectl apply -f k8s/monitoring/prometheus-service.yml
+          kubectl apply -f k8s/monitoring/loki-configmap.yml
+          kubectl apply -f k8s/monitoring/loki-pvc.yml
+          kubectl apply -f k8s/monitoring/loki-deployment.yml
+          kubectl apply -f k8s/monitoring/loki-service.yml
+          kubectl apply -f k8s/monitoring/promtail-configmap.yml
+          kubectl apply -f k8s/monitoring/promtail-daemonset.yml
+          kubectl apply -f k8s/monitoring/grafana-secret.yml
+          kubectl apply -f k8s/monitoring/grafana-configmap.yml
+          kubectl apply -f k8s/monitoring/grafana-dashboard-configmap.yml
+          kubectl apply -f k8s/monitoring/grafana-pvc.yml
+          kubectl apply -f k8s/monitoring/grafana-deployment.yml
+          kubectl apply -f k8s/monitoring/grafana-service.yml
+          kubectl apply -f k8s/monitoring/grafana-ingress.yml
+          kubectl get pods -n ge65poj -l 'app in (prometheus,grafana,loki)'

@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.chains import (
     Provider,
     ProviderNotConfigured,
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name)
 
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # Chains are cheap but hold a provider-specific model client, so build one per
 # provider on first use and reuse it. A build raises ProviderNotConfigured when

@@ -1,50 +1,62 @@
-name: Deploy Team Project
+name: Deploy to Azure VM
 
 on:
-  workflow_dispatch: # Allows you to click the manual "Run workflow" button
+  workflow_dispatch:
   push:
-    branches: [ "main" ] # Runs automatically on merge to main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Clean old files on Azure VM
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.AZURE_PUBLIC_IP }}
-        username: ${{ secrets.AZURE_USER }}
-        key: ${{ secrets.AZURE_PRIVATE_KEY }}
-        script: |
-          cd ~/app && docker compose down || true
-          rm -rf ~/app
-          mkdir -p ~/app/gateway/certs
-          if [ ! -f ~/certs/gateway.crt ]; then
-            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-              -keyout ~/certs/gateway.key -out ~/certs/gateway.crt \
-              -subj '/CN=vibeshield' 2>/dev/null
-          fi
-          cp ~/certs/gateway.crt ~/certs/gateway.key ~/app/gateway/certs/ 2>/dev/null || true
+      - name: Clean old deployment on Azure VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_PUBLIC_IP }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_PRIVATE_KEY }}
+          script: |
+            cd ~/app && docker compose down --remove-orphans || true
+            rm -rf ~/app
+            mkdir -p ~/app/gateway/certs ~/certs
+            if [ ! -f ~/certs/gateway.crt ]; then
+              openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+                -keyout ~/certs/gateway.key -out ~/certs/gateway.crt \
+                -subj '/CN=vibeshield' 2>/dev/null
+            fi
+            cp ~/certs/gateway.crt ~/certs/gateway.key ~/app/gateway/certs/ 2>/dev/null || true
 
-    - name: Copy Files to Azure VM via SCP
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.AZURE_PUBLIC_IP }}
-        username: ${{ secrets.AZURE_USER }}
-        key: ${{ secrets.AZURE_PRIVATE_KEY }}
-        source: "."
-        target: "~/app"
+      - name: Copy repository to Azure VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AZURE_PUBLIC_IP }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_PRIVATE_KEY }}
+          source: "."
+          target: "~/app"
 
-    - name: Execute Docker Compose Over SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.AZURE_PUBLIC_IP }}
-        username: ${{ secrets.AZURE_USER }}
-        key: ${{ secrets.AZURE_PRIVATE_KEY }}
-        script: |
-          cd ~/app
-          docker compose up -d --build
+      - name: Write .env and start services
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_PUBLIC_IP }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_PRIVATE_KEY }}
+          script: |
+            cd ~/app
+
+            # Write env file from GitHub Actions secrets so docker compose has all required vars
+            cat > .env <<'ENVEOF'
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            APP_JWT_SECRET=${{ secrets.APP_JWT_SECRET }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            LANGCHAIN_MODEL_NAME=gpt-4o-mini
+            ENVEOF
+
+            docker compose pull --ignore-pull-failures || true
+            docker compose up -d --build
+            docker compose ps
