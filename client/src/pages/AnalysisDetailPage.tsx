@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import { generateFixPrompt } from "../api/genai";
+import { useCallback, useEffect, useState } from "react";
+import {
+  AiBuilder,
+  FixPromptMode,
+  FixPromptPackage,
+  generateFixPrompt,
+} from "../api/genai";
 import { downloadReport, getReportData, ReportData } from "../api/reports";
 import { getScanComparison, ApiScanComparison } from "../api/scans";
 import { FindingDetailsPanel } from "../components/analysis/FindingDetailsPanel";
@@ -42,6 +47,7 @@ export function AnalysisDetailPage({
   const [comparisonError, setComparisonError] = useState("");
   const [rescanStatus, setRescanStatus] = useState<"idle" | "loading" | "error">("idle");
   const [rescanError, setRescanError] = useState("");
+  const [promptRequest, setPromptRequest] = useState<{ findingId: string; nonce: number }>();
   const selectedFinding =
     analysis?.findings.find((finding) => finding.id === selectedFindingId) ??
     analysis?.findings[0];
@@ -141,6 +147,15 @@ export function AnalysisDetailPage({
     }
   }
 
+  function handleGeneratePrompt(findingId: string) {
+    onSelectFinding(findingId);
+    setPromptRequest({ findingId, nonce: Date.now() });
+  }
+
+  const selectedFindingChangeStatus = selectedFinding
+    ? changeStatusForFinding(comparison, selectedFinding)
+    : undefined;
+
   return (
     <main className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="space-y-5">
@@ -169,6 +184,7 @@ export function AnalysisDetailPage({
               <FindingListItem
                 finding={finding}
                 key={finding.id}
+                onGeneratePrompt={handleGeneratePrompt}
                 onSelectFinding={onSelectFinding}
                 selected={finding.id === selectedFinding?.id}
               />
@@ -186,7 +202,11 @@ export function AnalysisDetailPage({
         </div>
       </section>
       <aside className="space-y-5">
-        <GenerateFixPrompt finding={selectedFinding} />
+        <GenerateFixPrompt
+          changeStatus={selectedFindingChangeStatus}
+          finding={selectedFinding}
+          promptRequest={promptRequest}
+        />
         <ReportPanel
           analysis={analysis}
           report={report}
@@ -501,6 +521,23 @@ function scanCategoryClass(check: string) {
   return scanCategoryStyles[check as ScanOption] ?? "border-zinc-300 bg-zinc-50 text-zinc-700";
 }
 
+function changeStatusForFinding(
+  comparison: ApiScanComparison | undefined,
+  finding: Finding,
+) {
+  if (!comparison?.comparable) return undefined;
+  const comparisonFinding =
+    comparison.actionPlan.find((item) => String(item.findingId) === finding.id) ??
+    comparison.findings.find((item) => String(item.findingId) === finding.id) ??
+    comparison.findings.find(
+      (item) =>
+        item.title === finding.title &&
+        item.affected === finding.affected &&
+        item.check === finding.check,
+    );
+  return comparisonFinding?.changeStatus;
+}
+
 function changeStatusClass(status: string) {
   if (status === "Fixed") {
     return "bg-emerald-50 text-emerald-800";
@@ -568,28 +605,51 @@ function AnalysisHeader({
  * Replit). The user never reads or writes code — the same kind of AI that built
  * the site repairs it.
  */
-function GenerateFixPrompt({ finding }: { finding?: Finding }) {
-  const [prompt, setPrompt] = useState("");
+const aiBuilders: AiBuilder[] = ["Generic", "Cursor", "Lovable", "v0", "Bolt", "Replit"];
+const promptModes: FixPromptMode[] = [
+  "Quick fix",
+  "Detailed implementation",
+  "Explain and fix",
+  "Verification only",
+];
+
+function GenerateFixPrompt({
+  changeStatus,
+  finding,
+  promptRequest,
+}: {
+  changeStatus?: string;
+  finding?: Finding;
+  promptRequest?: { findingId: string; nonce: number };
+}) {
+  const [builder, setBuilder] = useState<AiBuilder>("Generic");
+  const [mode, setMode] = useState<FixPromptMode>("Quick fix");
+  const [promptPackage, setPromptPackage] = useState<FixPromptPackage>();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"prompt" | "verification" | "package" | undefined>();
 
   // A different finding is a different prompt — clear any stale output.
   useEffect(() => {
-    setPrompt("");
+    setPromptPackage(undefined);
     setStatus("idle");
     setError("");
-    setCopied(false);
+    setCopied(undefined);
   }, [finding?.id]);
 
-  async function handleGenerate() {
+  const handleGenerate = useCallback(async () => {
     if (!finding) return;
     setStatus("loading");
     setError("");
-    setCopied(false);
+    setCopied(undefined);
     try {
-      const result = await generateFixPrompt(finding);
-      setPrompt(result);
+      const result = await generateFixPrompt({
+        ...finding,
+        builder,
+        changeStatus,
+        mode,
+      });
+      setPromptPackage(result);
       setStatus("idle");
     } catch (err) {
       setError(
@@ -599,12 +659,36 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
       );
       setStatus("error");
     }
+  }, [builder, changeStatus, finding, mode]);
+
+  useEffect(() => {
+    if (promptRequest?.findingId === finding?.id) {
+      void handleGenerate();
+    }
+  }, [finding?.id, handleGenerate, promptRequest?.findingId, promptRequest?.nonce]);
+
+  async function handleCopy(kind: "prompt" | "verification" | "package", text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(kind);
+    window.setTimeout(() => setCopied(undefined), 2000);
   }
 
-  async function handleCopy() {
-    await navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+  function fullPackageText(packageData: FixPromptPackage) {
+    return [
+      `AI builder: ${packageData.builder}`,
+      `Mode: ${packageData.mode}`,
+      `Issue type: ${packageData.issueType}`,
+      `Expected secure behavior: ${packageData.expectedResult}`,
+      `Likely targets: ${packageData.likelyTargets}`,
+      `Risk note: ${packageData.riskNote}`,
+      `Rollback note: ${packageData.rollbackNote}`,
+      "",
+      "Fix prompt:",
+      packageData.prompt,
+      "",
+      "Verification prompt:",
+      packageData.verificationPrompt,
+    ].join("\n");
   }
 
   return (
@@ -633,6 +717,43 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
             <p className="mt-1 truncate text-xs text-zinc-500">
               {finding.affected}
             </p>
+            {changeStatus && (
+              <p className="mt-2 text-xs font-semibold text-zinc-600">
+                Rescan status: {changeStatus}
+              </p>
+            )}
+          </div>
+
+          <div className="grid gap-3">
+            <label className="block">
+              <span className="text-sm font-medium text-zinc-700">AI builder</span>
+              <select
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                onChange={(event) => setBuilder(event.target.value as AiBuilder)}
+                value={builder}
+              >
+                {aiBuilders.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-zinc-700">Prompt style</span>
+              <select
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                onChange={(event) => setMode(event.target.value as FixPromptMode)}
+                value={mode}
+              >
+                {promptModes.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <button
@@ -643,7 +764,7 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
           >
             {status === "loading"
               ? "Generating…"
-              : prompt
+              : promptPackage
                 ? "Regenerate fix prompt"
                 : "Generate fix prompt"}
           </button>
@@ -654,20 +775,57 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
             </p>
           )}
 
-          {prompt && (
-            <div className="space-y-2">
+          {promptPackage && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-zinc-200 p-3 text-sm">
+                <p className="font-semibold text-zinc-900">{promptPackage.issueType}</p>
+                <p className="mt-2 text-xs font-semibold uppercase text-zinc-500">
+                  Expected secure behavior
+                </p>
+                <p className="mt-1 text-sm text-zinc-700">{promptPackage.expectedResult}</p>
+                <p className="mt-2 text-xs font-semibold uppercase text-zinc-500">
+                  Likely targets
+                </p>
+                <p className="mt-1 text-sm text-zinc-700">{promptPackage.likelyTargets}</p>
+                <p className="mt-2 text-xs font-semibold uppercase text-zinc-500">
+                  Safety note
+                </p>
+                <p className="mt-1 text-sm text-zinc-700">{promptPackage.riskNote}</p>
+                <p className="mt-2 text-xs font-semibold uppercase text-zinc-500">
+                  Rollback note
+                </p>
+                <p className="mt-1 text-sm text-zinc-700">{promptPackage.rollbackNote}</p>
+              </div>
+
               <textarea
                 className="min-h-48 w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-xs text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 readOnly
-                value={prompt}
+                value={promptPackage.prompt}
               />
-              <button
-                className="w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
-                onClick={handleCopy}
-                type="button"
-              >
-                {copied ? "Copied" : "Copy prompt"}
-              </button>
+
+              <div className="grid gap-2">
+                <button
+                  className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
+                  onClick={() => handleCopy("prompt", promptPackage.prompt)}
+                  type="button"
+                >
+                  {copied === "prompt" ? "Copied" : "Copy fix prompt"}
+                </button>
+                <button
+                  className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
+                  onClick={() => handleCopy("verification", promptPackage.verificationPrompt)}
+                  type="button"
+                >
+                  {copied === "verification" ? "Copied" : "Copy verification prompt"}
+                </button>
+                <button
+                  className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
+                  onClick={() => handleCopy("package", fullPackageText(promptPackage))}
+                  type="button"
+                >
+                  {copied === "package" ? "Copied" : "Copy full fix package"}
+                </button>
+              </div>
             </div>
           )}
         </div>
