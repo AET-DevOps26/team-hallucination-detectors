@@ -26,6 +26,7 @@ secrets:
   jwtSecret: "dev-secret-change-in-production"
   dbPassword: vibeshield
   openaiApiKey: ""
+  logosApiKey: ""
 
 autoscaling:
   enabled: false
