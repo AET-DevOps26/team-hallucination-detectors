@@ -12,9 +12,21 @@ spec:
       labels:
         app: langchain-service
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: langchain-service
           image: ghcr.io/aet-devops26/team-hallucination-detectors-langchain-service:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8000
           env:
@@ -25,3 +37,16 @@ spec:
                 secretKeyRef:
                   name: vibeshield-secrets
                   key: OPENAI_API_KEY
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10

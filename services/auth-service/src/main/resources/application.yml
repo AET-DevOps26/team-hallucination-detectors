@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://database:5432/vibeshield?currentSchema=auth_service
     username: vibeshield
-    password: vibeshield
+    password: ${SPRING_DATASOURCE_PASSWORD:vibeshield}
   flyway:
     default-schema: auth_service
     schemas: auth_service
