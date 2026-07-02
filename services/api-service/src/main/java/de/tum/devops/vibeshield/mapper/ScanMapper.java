@@ -2,6 +2,9 @@ package de.tum.devops.vibeshield.mapper;
 
 import de.tum.devops.vibeshield.model.Finding;
 import de.tum.devops.vibeshield.model.Scan;
+import de.tum.devops.vibeshield.rescan.ComparisonFinding;
+import de.tum.devops.vibeshield.rescan.ScanComparison;
+import de.tum.devops.vibeshield.rescan.ScanComparisonSummary;
 
 import java.time.ZoneOffset;
 
@@ -34,5 +37,42 @@ public final class ScanMapper {
                 .explanation(entity.getExplanation())
                 .suggestedFix(entity.getSuggestedFix())
                 .status(entity.getStatus());
+    }
+
+    public static de.tum.devops.vibeshield.generated.model.ScanComparison toModel(ScanComparison comparison) {
+        return new de.tum.devops.vibeshield.generated.model.ScanComparison()
+                .scanId(comparison.scanId())
+                .previousScanId(comparison.previousScanId())
+                .comparable(comparison.comparable())
+                .message(comparison.message())
+                .summary(toModel(comparison.summary()))
+                .findings(comparison.findings().stream().map(ScanMapper::toModel).toList())
+                .actionPlan(comparison.actionPlan().stream().map(ScanMapper::toModel).toList());
+    }
+
+    private static de.tum.devops.vibeshield.generated.model.ScanComparisonSummary toModel(
+            ScanComparisonSummary summary) {
+        return new de.tum.devops.vibeshield.generated.model.ScanComparisonSummary()
+                .fixed(summary.fixed())
+                .stillPresent(summary.stillPresent())
+                .newlyIntroduced(summary.newlyIntroduced());
+    }
+
+    private static de.tum.devops.vibeshield.generated.model.ComparisonFinding toModel(
+            ComparisonFinding finding) {
+        return new de.tum.devops.vibeshield.generated.model.ComparisonFinding()
+                .findingId(finding.findingId())
+                .changeStatus(de.tum.devops.vibeshield.generated.model.ScanChangeStatus.fromValue(
+                        finding.changeStatus().getValue()))
+                .severity(finding.severity())
+                .check(finding.check())
+                .title(finding.title())
+                .affected(finding.affected())
+                .suggestedFix(finding.suggestedFix())
+                .suggestedFixOrder(finding.suggestedFixOrder())
+                .effort(new de.tum.devops.vibeshield.generated.model.EffortEstimate()
+                        .level(de.tum.devops.vibeshield.generated.model.EffortEstimate.LevelEnum.fromValue(
+                                finding.effort().level()))
+                        .estimate(finding.effort().estimate()));
     }
 }

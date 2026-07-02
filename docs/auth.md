@@ -43,14 +43,29 @@ All routes are served under `/api/v1/auth`.
 | `GET`  | `/health`   | — | — | `200` `"Auth service running"` (text) | — |
 | `POST` | `/register` | — | `{ email, password }` | `200` `{ message }` | `400` if email already registered |
 | `POST` | `/login`    | — | `{ email, password }` | `200` `{ token, email }` | `401` on bad credentials |
+| `POST` | `/forgot-password` | — | `{ email }` | `200` `{ message }`, always — never reveals whether the email is registered | — |
+| `POST` | `/reset-password`  | — | `{ token, newPassword }` | `200` `{ message }` | `400` if the token is unknown, expired, or already used |
 | `GET`  | `/me`       | Bearer token | — | `200` `{ email }` | `401` if header missing/invalid |
 
 Send the token returned by `/login` as `Authorization: Bearer <token>` to `/me`.
 
 All errors use the unified schema `{ code, message, details }` (see `dto/ErrorResponse.java`),
 shared across every VibeShield service. Codes emitted here: `EMAIL_ALREADY_REGISTERED`,
-`INVALID_CREDENTIALS`, `UNAUTHORIZED`, `INVALID_TOKEN`, and `INTERNAL_ERROR` for unexpected
-failures. `details` is `null` unless an error carries structured context.
+`INVALID_CREDENTIALS`, `UNAUTHORIZED`, `INVALID_TOKEN`, `INVALID_RESET_TOKEN`, and
+`INTERNAL_ERROR` for unexpected failures. `details` is `null` unless an error carries
+structured context.
+
+### Password reset
+
+`PasswordResetService` issues a single-use, 1-hour-lived token per reset request (stored in
+`auth_service.password_reset_tokens`, FK `ON DELETE CASCADE` to `users`) and invalidates any
+token issued earlier to the same user, so only the most recent request is ever redeemable.
+`/forgot-password` always returns the same `200` response regardless of whether the email is
+registered, so it can't be used to enumerate accounts.
+
+**Known gap:** no email provider is wired up yet — the reset link is logged
+(`PasswordResetService#requestReset`) instead of emailed. The token mechanics are real; only
+the delivery channel is a placeholder pending a provider decision.
 
 Interactive API docs (when running): `http://localhost:8081/swagger-ui.html`
 (OpenAPI JSON at `/v3/api-docs`).

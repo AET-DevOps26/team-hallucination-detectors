@@ -55,6 +55,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a password reset link
+         * @description Always returns `200` with the same message whether or not the email is
+         *     registered, so this endpoint cannot be used to enumerate accounts. If the
+         *     email is registered, a single-use reset token is generated and emailed to it.
+         */
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange a reset token for a new password */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me": {
         parameters: {
             query?: never;
@@ -165,6 +204,46 @@ export interface paths {
          * @description Empty until the scan status is `Completed`.
          */
         get: operations["listFindings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/rescan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rerun a scan using the same configuration
+         * @description Creates a new Pending scan for the same website and scan configuration as the selected scan.
+         */
+        post: operations["rescan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans/{scanId}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare this scan with the previous completed scan
+         * @description Compares the selected completed scan with the latest previous completed scan for the same website.
+         */
+        get: operations["getScanComparison"];
         put?: never;
         post?: never;
         delete?: never;
@@ -290,6 +369,16 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        ForgotPasswordRequest: {
+            /** Format: email */
+            email: string;
+        };
+        ResetPasswordRequest: {
+            /** @description Single-use reset token from the forgot-password email. */
+            token: string;
+            /** Format: password */
+            newPassword: string;
+        };
         UserResponse: {
             /** Format: email */
             email: string;
@@ -401,6 +490,46 @@ export interface components {
             /** @description Plain-language fix suggestion; input for AI fix-prompt generation. */
             suggestedFix: string;
             status: components["schemas"]["FindingStatus"];
+        };
+        /**
+         * @description How a finding changed compared with the previous completed scan.
+         * @enum {string}
+         */
+        ScanChangeStatus: "Fixed" | "Still present" | "Newly introduced";
+        ComparisonFinding: {
+            /**
+             * Format: int64
+             * @description ID of the finding in the scan it came from.
+             */
+            findingId?: number | null;
+            changeStatus: components["schemas"]["ScanChangeStatus"];
+            severity: components["schemas"]["Severity"];
+            check: components["schemas"]["ScanCheck"];
+            title: string;
+            affected: string;
+            suggestedFix: string;
+            /** @description 1-based action-plan order for current open findings. */
+            suggestedFixOrder?: number | null;
+            effort: components["schemas"]["EffortEstimate"];
+        };
+        ScanComparisonSummary: {
+            fixed: number;
+            stillPresent: number;
+            newlyIntroduced: number;
+        };
+        ScanComparison: {
+            /** Format: int64 */
+            scanId: number;
+            /** Format: int64 */
+            previousScanId?: number | null;
+            /** @description False when the scan is not completed or no previous completed scan exists. */
+            comparable: boolean;
+            message: string;
+            summary: components["schemas"]["ScanComparisonSummary"];
+            /** @description Fixed, still-present, and newly introduced findings. */
+            findings: components["schemas"]["ComparisonFinding"][];
+            /** @description Current open findings ordered by severity and rough effort estimate. */
+            actionPlan: components["schemas"]["ComparisonFinding"][];
         };
         EffortEstimate: {
             /** @enum {string} */
@@ -588,6 +717,63 @@ export interface operations {
             };
             /** @description Bad credentials (`INVALID_CREDENTIALS`). */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Request accepted; a reset email was sent if the address is registered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Password updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Token is missing, unknown, expired, or already used (`INVALID_RESET_TOKEN`). */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -825,6 +1011,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Finding"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rescan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rescan accepted for background execution. */
+            202: {
+                headers: {
+                    /** @description URL of the created scan, for status polling. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scan"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description A scan for this website is already `Pending` or `Running` (`SCAN_IN_PROGRESS`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getScanComparison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of a scan belonging to one of the user's websites. */
+                scanId: components["parameters"]["ScanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Comparison result and prioritized action plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanComparison"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -10,7 +10,7 @@ import type { Finding } from "../types/domain";
 /** The finding fields the GenAI service needs to write a fix prompt. */
 export type FixPromptInput = Pick<
   Finding,
-  "title" | "severity" | "check" | "affected" | "summary" | "impact"
+  "title" | "severity" | "checkLabel" | "affected" | "summary" | "impact"
 >;
 
 /**
@@ -20,16 +20,18 @@ export type FixPromptInput = Pick<
  */
 export async function generateFixPrompt(
   finding: FixPromptInput,
+  builder: string = "Generic",
 ): Promise<string> {
   const { data } = await apiClient.post<{ prompt: string }>(
     "/langchain/fix-prompt",
     {
       title: finding.title,
       severity: finding.severity,
-      check: finding.check,
+      check: finding.checkLabel,
       affected: finding.affected,
       summary: finding.summary,
       impact: finding.impact,
+      builder,
     },
     { timeout: 30000 },
   );

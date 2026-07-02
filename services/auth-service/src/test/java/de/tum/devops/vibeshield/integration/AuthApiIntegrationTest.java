@@ -1,7 +1,9 @@
 package de.tum.devops.vibeshield.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.tum.devops.vibeshield.model.PasswordResetToken;
 import de.tum.devops.vibeshield.model.User;
+import de.tum.devops.vibeshield.repository.PasswordResetTokenRepository;
 import de.tum.devops.vibeshield.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Instant;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,8 +43,12 @@ class AuthApiIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordResetTokenRepository tokenRepository;
+
     @BeforeEach
     void clean() {
+        tokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -55,6 +62,18 @@ class AuthApiIntegrationTest {
         return mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("email", email, "password", password))));
+    }
+
+    private ResultActions forgotPassword(String email) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("email", email))));
+    }
+
+    private ResultActions resetPassword(String token, String newPassword) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("token", token, "newPassword", newPassword))));
     }
 
     // I4
@@ -137,5 +156,74 @@ class AuthApiIntegrationTest {
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("flow@example.com"));
+    }
+
+    @Test
+    void forgotPassword_unknownEmail_stillReturns200() throws Exception {
+        forgotPassword("ghost@example.com").andExpect(status().isOk());
+
+        assertThat(tokenRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void forgotPassword_registeredEmail_issuesToken() throws Exception {
+        register("reset@example.com", "old-password").andExpect(status().isOk());
+
+        forgotPassword("reset@example.com").andExpect(status().isOk());
+
+        assertThat(tokenRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void forgotPassword_secondRequest_invalidatesEarlierToken() throws Exception {
+        register("reset@example.com", "old-password").andExpect(status().isOk());
+
+        forgotPassword("reset@example.com").andExpect(status().isOk());
+        String firstToken = tokenRepository.findAll().get(0).getToken();
+
+        forgotPassword("reset@example.com").andExpect(status().isOk());
+
+        assertThat(tokenRepository.findAll()).hasSize(1);
+        assertThat(tokenRepository.findAll().get(0).getToken()).isNotEqualTo(firstToken);
+    }
+
+    @Test
+    void resetPassword_unknownToken_returns400() throws Exception {
+        resetPassword("not-a-real-token", "new-password")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
+    }
+
+    @Test
+    void resetPassword_expiredToken_returns400() throws Exception {
+        register("reset@example.com", "old-password").andExpect(status().isOk());
+        User user = userRepository.findByEmail("reset@example.com").orElseThrow();
+        PasswordResetToken expired = new PasswordResetToken(user.getId(), "expired-token", Instant.now().minusSeconds(1));
+        tokenRepository.save(expired);
+
+        resetPassword("expired-token", "new-password")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
+    }
+
+    @Test
+    void resetPassword_validToken_updatesPasswordAndConsumesToken() throws Exception {
+        register("reset@example.com", "old-password").andExpect(status().isOk());
+        forgotPassword("reset@example.com").andExpect(status().isOk());
+        String token = tokenRepository.findAll().get(0).getToken();
+
+        resetPassword(token, "new-password")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password updated successfully"));
+
+        login("reset@example.com", "old-password")
+                .andExpect(status().isUnauthorized());
+        login("reset@example.com", "new-password")
+                .andExpect(status().isOk());
+
+        // Token is single-use: redeeming it again must fail even with the same valid-looking token.
+        resetPassword(token, "another-password")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
     }
 }

@@ -13,13 +13,30 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Clean old files on Azure VM
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.AZURE_PUBLIC_IP }}
+        username: ${{ secrets.AZURE_USER }}
+        key: ${{ secrets.AZURE_PRIVATE_KEY }}
+        script: |
+          cd ~/app && docker compose down || true
+          rm -rf ~/app
+          mkdir -p ~/app/gateway/certs
+          if [ ! -f ~/certs/gateway.crt ]; then
+            openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+              -keyout ~/certs/gateway.key -out ~/certs/gateway.crt \
+              -subj '/CN=vibeshield' 2>/dev/null
+          fi
+          cp ~/certs/gateway.crt ~/certs/gateway.key ~/app/gateway/certs/ 2>/dev/null || true
+
     - name: Copy Files to Azure VM via SCP
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.AZURE_PUBLIC_IP }}
         username: ${{ secrets.AZURE_USER }}
         key: ${{ secrets.AZURE_PRIVATE_KEY }}
-        source: "." 
+        source: "."
         target: "~/app"
 
     - name: Execute Docker Compose Over SSH
@@ -30,7 +47,4 @@ jobs:
         key: ${{ secrets.AZURE_PRIVATE_KEY }}
         script: |
           cd ~/app
-          # Shuts down old containers (the || true prevents errors if it's the first time running)
-          docker compose down || true 
-          # Builds and starts the new containers
           docker compose up -d --build
