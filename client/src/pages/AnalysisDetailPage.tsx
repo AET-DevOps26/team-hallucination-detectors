@@ -176,39 +176,88 @@ export function AnalysisDetailPage({
         ready={analysis.status === "Completed"}
       />
 
-      <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_minmax(300px,380px)]">
-        <div className="space-y-2">
-          {analysis.findings.map((finding) => (
-            <FindingListItem
-              finding={finding}
-              isNew={newFindingIds.has(finding.id)}
-              key={finding.id}
-              onSelectFinding={onSelectFinding}
-              selected={finding.id === selectedFinding?.id}
-            />
-          ))}
-        </div>
-        {selectedFinding && (
-          <>
-            <FindingDetailsPanel
-              analysis={analysis}
-              finding={selectedFinding}
-              onUpdateFinding={onUpdateFinding}
-              resolutionReason={resolutionReason}
-              setResolutionReason={setResolutionReason}
-            />
-            <GenerateFixPrompt finding={selectedFinding} />
-          </>
-        )}
-      </section>
+      <section className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="xl:sticky xl:top-5 xl:self-start">
+          <ReportPanel
+            analysis={analysis}
+            report={report}
+            reportError={reportError}
+            reportStatus={reportStatus}
+          />
+        </aside>
 
-      <ReportPanel
-        analysis={analysis}
-        report={report}
-        reportError={reportError}
-        reportStatus={reportStatus}
-      />
+        <div className="space-y-5">
+          <FindingsPanel
+            analysis={analysis}
+            comparison={comparison}
+            newFindingIds={newFindingIds}
+            onSelectFinding={onSelectFinding}
+            selectedFindingId={selectedFinding?.id}
+          />
+
+          {selectedFinding && (
+            <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_340px]">
+              <FindingDetailsPanel
+                analysis={analysis}
+                finding={selectedFinding}
+                onUpdateFinding={onUpdateFinding}
+                resolutionReason={resolutionReason}
+                setResolutionReason={setResolutionReason}
+              />
+              <GenerateFixPrompt finding={selectedFinding} />
+            </section>
+          )}
+        </div>
+      </section>
     </main>
+  );
+}
+
+function FindingsPanel({
+  analysis,
+  comparison,
+  newFindingIds,
+  onSelectFinding,
+  selectedFindingId,
+}: {
+  analysis: Analysis;
+  comparison?: ApiScanComparison;
+  newFindingIds: Set<string>;
+  onSelectFinding: (id: string) => void;
+  selectedFindingId?: string;
+}) {
+  const openCount = analysis.findings.filter((finding) => finding.status === "Open").length;
+
+  return (
+    <section className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Findings
+          </h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            {analysis.findings.length} total, {openCount} open
+          </p>
+        </div>
+        {comparison?.summary.newlyIntroduced ? (
+          <span className="w-fit rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-800">
+            {comparison.summary.newlyIntroduced} new since last scan
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 lg:grid-cols-2">
+        {analysis.findings.map((finding) => (
+          <FindingListItem
+            finding={finding}
+            isNew={newFindingIds.has(finding.id)}
+            key={finding.id}
+            onSelectFinding={onSelectFinding}
+            selected={finding.id === selectedFindingId}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -240,93 +289,128 @@ function ReportPanel({
   }
 
   return (
-    <section className="rounded-md border border-zinc-300 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+      <div className="bg-zinc-950 px-4 py-4 text-white">
         <div>
-          <h2 className="text-xl font-semibold">Export</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Executive summary or full scan report for launch review.
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-200">
+            Scan report
+          </p>
+          <h2 className="mt-1 text-xl font-semibold">Summary and launch checklist</h2>
+          <p className="mt-2 text-sm leading-5 text-zinc-300">
+            Report snapshot, launch readiness, and export options for this scan.
           </p>
         </div>
-        {ready && report && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="rounded-md bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={downloadStatus === "loading"}
-              onClick={() => handleDownload("summary-pdf")}
-              type="button"
-            >
-              Summary PDF
-            </button>
-            <button
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={downloadStatus === "loading"}
-              onClick={() => handleDownload("summary-html")}
-              type="button"
-            >
-              HTML
-            </button>
-            <button
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={downloadStatus === "loading"}
-              onClick={() => handleDownload("full-pdf")}
-              type="button"
-            >
-              Full PDF
-            </button>
-          </div>
-        )}
       </div>
 
+      {ready && report && (
+        <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-zinc-900">Export report</p>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Download this report summary for review.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-1.5">
+              <button
+                className="rounded-md bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={downloadStatus === "loading"}
+                onClick={() => handleDownload("summary-pdf")}
+                type="button"
+              >
+                PDF
+              </button>
+              <button
+                className="rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={downloadStatus === "loading"}
+                onClick={() => handleDownload("summary-html")}
+                type="button"
+              >
+                HTML
+              </button>
+              <button
+                className="rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={downloadStatus === "loading"}
+                onClick={() => handleDownload("full-pdf")}
+                type="button"
+              >
+                Full
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!ready && (
-        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
+        <p className="m-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
           Reports are available after this scan completes.
         </p>
       )}
 
       {ready && reportStatus === "loading" && (
-        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
-          Preparing report preview…
+        <p className="m-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
+          Preparing report preview...
         </p>
       )}
 
       {ready && reportStatus === "error" && (
-        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+        <p className="m-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
           {reportError}
         </p>
       )}
 
       {ready && report && (
-        <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <div className="rounded-md border border-zinc-200 p-3">
-            <p className="text-xs font-semibold uppercase text-zinc-500">Safe to launch</p>
-            <p className="mt-1 text-lg font-semibold text-zinc-900">{report.safeToLaunch.status}</p>
-            <p className="text-sm text-zinc-600">
+        <div className="space-y-4 p-4">
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Launch readiness
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold leading-none text-zinc-950">
+                {report.safeToLaunch.status}
+              </p>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200">
+                {report.safeToLaunch.blockingIssues} blocking
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-zinc-600">
               {report.safeToLaunch.blockingIssues} checklist item
               {report.safeToLaunch.blockingIssues === 1 ? "" : "s"} need attention.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {report.safeToLaunch.items.map((item) => (
-              <div className="rounded-md border border-zinc-200 p-2 text-sm" key={item.label}>
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-zinc-800">{item.label}</span>
-                  <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${checklistResultClass(item.result)}`}>
-                    {item.result}
-                  </span>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Checklist
+            </p>
+            <div className="space-y-2">
+              {report.safeToLaunch.items.map((item) => (
+                <div className="rounded-md border border-zinc-200 bg-white p-3 text-sm" key={item.label}>
+                  <div className="flex items-start gap-3">
+                    <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${checklistDotClass(item.result)}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-medium text-zinc-900">{item.label}</span>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${checklistResultClass(item.result)}`}>
+                          {item.result}
+                        </span>
+                      </div>
+                      <span className="mt-1 block text-xs leading-5 text-zinc-500">{item.reason}</span>
+                    </div>
+                  </div>
                 </div>
-                <span className="mt-1 block text-xs text-zinc-500">{item.reason}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {report.executiveSummary.recommendedNextSteps.length > 0 && (
-            <div className="lg:col-span-2">
-              <p className="text-sm font-semibold text-zinc-800">Recommended next steps</p>
-              <ol className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="border-t border-zinc-200 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Next steps
+              </p>
+              <ol className="mt-2 space-y-2">
                 {report.executiveSummary.recommendedNextSteps.slice(0, 3).map((step) => (
-                  <li className="rounded-md border border-zinc-200 p-2 text-sm" key={`${step.order}-${step.title}`}>
+                  <li className="rounded-md bg-zinc-50 p-2 text-sm" key={`${step.order}-${step.title}`}>
                     <span className="font-medium text-zinc-800">
                       {step.order}. {step.title}
                     </span>
@@ -340,7 +424,7 @@ function ReportPanel({
           )}
 
           {downloadStatus === "error" && (
-            <p className="lg:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-800">
+            <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">
               {downloadError}
             </p>
           )}
@@ -358,6 +442,16 @@ function checklistResultClass(result: string) {
     return "bg-red-50 text-red-800";
   }
   return "bg-zinc-100 text-zinc-600";
+}
+
+function checklistDotClass(result: string) {
+  if (result === "Pass") {
+    return "bg-emerald-500";
+  }
+  if (result === "Needs attention" || result === "Incomplete") {
+    return "bg-red-500";
+  }
+  return "bg-zinc-400";
 }
 
 /**
@@ -405,18 +499,24 @@ function ComparisonSummary({
   }
 
   return (
-    <section className="flex flex-wrap items-center gap-3 rounded-md border border-zinc-300 bg-white px-4 py-3">
-      <h2 className="text-sm font-semibold text-zinc-800">Since last scan</h2>
-      <div className="flex flex-wrap gap-2">
+    <section className="rounded-md border border-zinc-200 bg-white px-4 py-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Since last scan
+          </h2>
+          {comparison.summary.newlyIntroduced > 0 && (
+            <p className="mt-0.5 text-xs text-zinc-500">
+              New findings are flagged in the list so you can triage them first.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
         <MiniChangeMetric label="Fixed" value={comparison.summary.fixed} tone="good" />
         <MiniChangeMetric label="Still open" value={comparison.summary.stillPresent} tone="warn" />
         <MiniChangeMetric label="New" value={comparison.summary.newlyIntroduced} tone="bad" />
+        </div>
       </div>
-      {comparison.summary.newlyIntroduced > 0 && (
-        <p className="text-xs text-zinc-500">
-          New findings are flagged "New" in the list below.
-        </p>
-      )}
     </section>
   );
 }
@@ -436,8 +536,8 @@ function MiniChangeMetric({
     bad: "bg-red-50 text-red-800",
   }[tone];
   return (
-    <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 ${toneClass}`}>
-      <p className="text-sm font-semibold">{value}</p>
+    <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${toneClass}`}>
+      <p className="text-sm font-semibold leading-none">{value}</p>
       <p className="text-xs font-medium">{label}</p>
     </div>
   );
@@ -459,33 +559,42 @@ function AnalysisHeader({
   rescanLoading: boolean;
 }) {
   return (
-    <div className="rounded-md border border-zinc-300 bg-white p-5">
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500" onClick={() => navigate("/analysis")} type="button">
-          Back to analyses
-        </button>
-        <button
-          className="rounded-md bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={inProgress || rescanLoading}
-          onClick={onRescan}
-          type="button"
-        >
-          {rescanLoading ? "Starting…" : "Rerun scan"}
-        </button>
-      </div>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">{analysis.siteName}</h2>
-          <p className="mt-1 text-zinc-600">{analysis.url}</p>
-          <p className="mt-2 text-sm text-zinc-500">
-            {analysis.status} analysis from {analysis.createdAt}
-          </p>
+    <div className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+      <div className="border-b border-zinc-200 bg-gradient-to-br from-zinc-950 to-zinc-800 p-5 text-white">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <button
+            className="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
+            onClick={() => navigate("/analysis")}
+            type="button"
+          >
+            Back to analyses
+          </button>
+          <button
+            className="rounded-md bg-teal-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={inProgress || rescanLoading}
+            onClick={onRescan}
+            type="button"
+          >
+            {rescanLoading ? "Starting..." : "Rerun scan"}
+          </button>
         </div>
-        <SeveritySummary counts={counts} />
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-100">
+                {analysis.status}
+              </span>
+              <span className="text-sm text-zinc-300">{analysis.createdAt}</span>
+            </div>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight">{analysis.siteName}</h2>
+            <p className="mt-2 break-all text-zinc-300">{analysis.url}</p>
+          </div>
+          <SeveritySummary counts={counts} variant="dark" />
+        </div>
       </div>
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 p-4">
         {analysis.selectedScans.map((scan) => (
-          <span className="rounded bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-700" key={scan}>
+          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700" key={scan}>
             {scanLabels[scan]}
           </span>
         ))}
@@ -546,9 +655,14 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
   }
 
   return (
-    <aside className="flex flex-col rounded-md border border-teal-200 bg-teal-50/40 p-5">
+    <aside className="flex flex-col rounded-md border border-teal-200 bg-teal-50/60 p-5 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-xl font-semibold">Fix prompt</h2>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+            AI repair
+          </p>
+          <h2 className="mt-1 text-xl font-semibold">Fix prompt</h2>
+        </div>
         {finding && (
           <span
             className={`shrink-0 rounded border px-2 py-1 text-xs font-semibold ${severityStyles[finding.severity]}`}
@@ -608,7 +722,7 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
           </div>
 
           <button
-            className="w-full rounded-md bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-md bg-zinc-950 px-4 py-3 font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={status === "loading"}
             onClick={handleGenerate}
             type="button"
