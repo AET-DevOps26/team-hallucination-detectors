@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { generateFixPrompt } from "../api/genai";
 import { downloadReport, getReportData, ReportData } from "../api/reports";
 import { getScanComparison, ApiScanComparison } from "../api/scans";
 import { FindingDetailsPanel } from "../components/analysis/FindingDetailsPanel";
 import { FindingListItem } from "../components/analysis/FindingListItem";
 import { SeveritySummary } from "../components/analysis/SeveritySummary";
-import { scanCategoryStyles, scanLabels, severityStyles } from "../constants/scans";
-import { Analysis, Finding, FindingStatus, ScanOption } from "../types/domain";
+import { scanLabels, severityStyles } from "../constants/scans";
+import { Analysis, Finding, FindingStatus } from "../types/domain";
 import { getSeverityCounts } from "../utils/analysis";
 
 type AnalysisDetailPageProps = {
@@ -110,6 +110,18 @@ export function AnalysisDetailPage({
     };
   }, [reportAnalysisId, reportAnalysisStatus]);
 
+  // Findings the comparison flags as new in this scan, keyed by finding id, so the
+  // list can call them out inline instead of repeating them in a second list.
+  const newFindingIds = useMemo(() => {
+    const ids = new Set<string>();
+    comparison?.findings.forEach((finding) => {
+      if (finding.changeStatus === "Newly introduced" && finding.findingId != null) {
+        ids.add(String(finding.findingId));
+      }
+    });
+    return ids;
+  }, [comparison]);
+
   if (!analysis) {
     return (
       <main className="rounded-md border border-zinc-300 bg-white p-6">
@@ -142,39 +154,41 @@ export function AnalysisDetailPage({
   }
 
   return (
-    <main className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="space-y-5">
-        <AnalysisHeader
-          analysis={analysis}
-          navigate={navigate}
-          counts={severityCounts}
-          inProgress={inProgress}
-          onRescan={handleRescan}
-          rescanLoading={rescanStatus === "loading"}
-        />
-        {rescanStatus === "error" && (
-          <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-            {rescanError}
-          </p>
-        )}
-        <ScanComparisonPanel
-          comparison={comparison}
-          comparisonError={comparisonError}
-          comparisonStatus={comparisonStatus}
-          ready={analysis.status === "Completed"}
-        />
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)]">
-          <div className="space-y-3">
-            {analysis.findings.map((finding) => (
-              <FindingListItem
-                finding={finding}
-                key={finding.id}
-                onSelectFinding={onSelectFinding}
-                selected={finding.id === selectedFinding?.id}
-              />
-            ))}
-          </div>
-          {selectedFinding && (
+    <main className="space-y-5">
+      <AnalysisHeader
+        analysis={analysis}
+        navigate={navigate}
+        counts={severityCounts}
+        inProgress={inProgress}
+        onRescan={handleRescan}
+        rescanLoading={rescanStatus === "loading"}
+      />
+      {rescanStatus === "error" && (
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+          {rescanError}
+        </p>
+      )}
+      <ComparisonSummary
+        comparison={comparison}
+        comparisonError={comparisonError}
+        comparisonStatus={comparisonStatus}
+        ready={analysis.status === "Completed"}
+      />
+
+      <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="space-y-2">
+          {analysis.findings.map((finding) => (
+            <FindingListItem
+              finding={finding}
+              isNew={newFindingIds.has(finding.id)}
+              key={finding.id}
+              onSelectFinding={onSelectFinding}
+              selected={finding.id === selectedFinding?.id}
+            />
+          ))}
+        </div>
+        {selectedFinding && (
+          <>
             <FindingDetailsPanel
               analysis={analysis}
               finding={selectedFinding}
@@ -182,18 +196,17 @@ export function AnalysisDetailPage({
               resolutionReason={resolutionReason}
               setResolutionReason={setResolutionReason}
             />
-          )}
-        </div>
+            <GenerateFixPrompt finding={selectedFinding} />
+          </>
+        )}
       </section>
-      <aside className="space-y-5">
-        <GenerateFixPrompt finding={selectedFinding} />
-        <ReportPanel
-          analysis={analysis}
-          report={report}
-          reportError={reportError}
-          reportStatus={reportStatus}
-        />
-      </aside>
+
+      <ReportPanel
+        analysis={analysis}
+        report={report}
+        reportError={reportError}
+        reportStatus={reportStatus}
+      />
     </main>
   );
 }
@@ -226,11 +239,43 @@ function ReportPanel({
   }
 
   return (
-    <div className="rounded-md border border-zinc-300 bg-white p-5">
-      <h2 className="text-xl font-semibold">Reports</h2>
-      <p className="mt-1 text-sm text-zinc-600">
-        Export an executive summary or a full scan report for launch review.
-      </p>
+    <section className="rounded-md border border-zinc-300 bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Export</h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            Executive summary or full scan report for launch review.
+          </p>
+        </div>
+        {ready && report && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="rounded-md bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={downloadStatus === "loading"}
+              onClick={() => handleDownload("summary-pdf")}
+              type="button"
+            >
+              Summary PDF
+            </button>
+            <button
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={downloadStatus === "loading"}
+              onClick={() => handleDownload("summary-html")}
+              type="button"
+            >
+              HTML
+            </button>
+            <button
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={downloadStatus === "loading"}
+              onClick={() => handleDownload("full-pdf")}
+              type="button"
+            >
+              Full PDF
+            </button>
+          </div>
+        )}
+      </div>
 
       {!ready && (
         <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
@@ -251,7 +296,7 @@ function ReportPanel({
       )}
 
       {ready && report && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
           <div className="rounded-md border border-zinc-200 p-3">
             <p className="text-xs font-semibold uppercase text-zinc-500">Safe to launch</p>
             <p className="mt-1 text-lg font-semibold text-zinc-900">{report.safeToLaunch.status}</p>
@@ -261,33 +306,26 @@ function ReportPanel({
             </p>
           </div>
 
-          <div>
-            <p className="text-sm font-semibold text-zinc-800">Checklist</p>
-            <ul className="mt-2 space-y-2">
-              {report.safeToLaunch.items.map((item) => (
-                <li className="rounded-md border border-zinc-200 p-2 text-sm" key={item.label}>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium text-zinc-800">{item.label}</span>
-                    <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${checklistResultClass(item.result)}`}>
-                      {item.result}
-                    </span>
-                  </div>
-                  <span>
-                    <span className="block text-xs text-zinc-500">{item.reason}</span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {report.safeToLaunch.items.map((item) => (
+              <div className="rounded-md border border-zinc-200 p-2 text-sm" key={item.label}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-zinc-800">{item.label}</span>
+                  <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${checklistResultClass(item.result)}`}>
+                    {item.result}
                   </span>
-                </li>
-              ))}
-            </ul>
+                </div>
+                <span className="mt-1 block text-xs text-zinc-500">{item.reason}</span>
+              </div>
+            ))}
           </div>
 
-          <div>
-            <p className="text-sm font-semibold text-zinc-800">Next steps</p>
-            {report.executiveSummary.recommendedNextSteps.length === 0 ? (
-              <p className="mt-2 text-sm text-zinc-500">No open findings require action.</p>
-            ) : (
-              <ol className="mt-2 space-y-2">
+          {report.executiveSummary.recommendedNextSteps.length > 0 && (
+            <div className="lg:col-span-2">
+              <p className="text-sm font-semibold text-zinc-800">Recommended next steps</p>
+              <ol className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {report.executiveSummary.recommendedNextSteps.slice(0, 3).map((step) => (
-                  <li className="text-sm" key={`${step.order}-${step.title}`}>
+                  <li className="rounded-md border border-zinc-200 p-2 text-sm" key={`${step.order}-${step.title}`}>
                     <span className="font-medium text-zinc-800">
                       {step.order}. {step.title}
                     </span>
@@ -297,46 +335,17 @@ function ReportPanel({
                   </li>
                 ))}
               </ol>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <button
-              className="rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={downloadStatus === "loading"}
-              onClick={() => handleDownload("summary-pdf")}
-              type="button"
-            >
-              Summary PDF
-            </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={downloadStatus === "loading"}
-                onClick={() => handleDownload("summary-html")}
-                type="button"
-              >
-                HTML
-              </button>
-              <button
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={downloadStatus === "loading"}
-                onClick={() => handleDownload("full-pdf")}
-                type="button"
-              >
-                Full PDF
-              </button>
             </div>
-          </div>
+          )}
 
           {downloadStatus === "error" && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+            <p className="lg:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-800">
               {downloadError}
             </p>
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -350,7 +359,12 @@ function checklistResultClass(result: string) {
   return "bg-zinc-100 text-zinc-600";
 }
 
-function ScanComparisonPanel({
+/**
+ * A compact "what changed" strip. Per-finding changes are surfaced inline on the
+ * findings list (a "New" badge) instead of being repeated here, so this only
+ * needs to carry the headline counts.
+ */
+function ComparisonSummary({
   comparison,
   comparisonError,
   comparisonStatus,
@@ -361,87 +375,46 @@ function ScanComparisonPanel({
   comparisonStatus: "idle" | "loading" | "error";
   ready: boolean;
 }) {
-  return (
-    <section className="rounded-md border border-zinc-300 bg-white p-5">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Changes since previous scan</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Compare the current scan with the last completed scan for this site.
-          </p>
-        </div>
-        {comparison?.comparable && (
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <MiniChangeMetric label="Fixed" value={comparison.summary.fixed} tone="good" />
-            <MiniChangeMetric label="Still" value={comparison.summary.stillPresent} tone="warn" />
-            <MiniChangeMetric label="New" value={comparison.summary.newlyIntroduced} tone="bad" />
-          </div>
-        )}
-      </div>
+  if (!ready) {
+    return null;
+  }
+  if (comparisonStatus === "loading") {
+    return (
+      <p className="rounded-md bg-zinc-50 px-4 py-2 text-sm text-zinc-600">
+        Loading comparison with the previous scan…
+      </p>
+    );
+  }
+  if (comparisonStatus === "error") {
+    return (
+      <p className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">
+        {comparisonError}
+      </p>
+    );
+  }
+  if (!comparison) {
+    return null;
+  }
+  if (!comparison.comparable) {
+    return (
+      <p className="rounded-md bg-zinc-50 px-4 py-2 text-sm text-zinc-600">
+        {comparison.message}
+      </p>
+    );
+  }
 
-      {!ready && (
-        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
-          Comparison is available after this scan completes.
+  return (
+    <section className="flex flex-wrap items-center gap-3 rounded-md border border-zinc-300 bg-white px-4 py-3">
+      <h2 className="text-sm font-semibold text-zinc-800">Since last scan</h2>
+      <div className="flex flex-wrap gap-2">
+        <MiniChangeMetric label="Fixed" value={comparison.summary.fixed} tone="good" />
+        <MiniChangeMetric label="Still open" value={comparison.summary.stillPresent} tone="warn" />
+        <MiniChangeMetric label="New" value={comparison.summary.newlyIntroduced} tone="bad" />
+      </div>
+      {comparison.summary.newlyIntroduced > 0 && (
+        <p className="text-xs text-zinc-500">
+          New findings are flagged "New" in the list below.
         </p>
-      )}
-      {ready && comparisonStatus === "loading" && (
-        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
-          Loading comparison…
-        </p>
-      )}
-      {ready && comparisonStatus === "error" && (
-        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
-          {comparisonError}
-        </p>
-      )}
-      {ready && comparison && !comparison.comparable && (
-        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
-          {comparison.message}
-        </p>
-      )}
-      {ready && comparison?.comparable && (
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div>
-            <p className="text-sm font-semibold text-zinc-800">Finding changes</p>
-            <div className="mt-2 space-y-2">
-              {comparison.findings.length === 0 ? (
-                <p className="rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
-                  No finding changes were detected.
-                </p>
-              ) : (
-                comparison.findings.map((finding) => (
-                  <ComparisonFindingRow finding={finding} key={`${finding.changeStatus}-${finding.title}-${finding.affected}`} />
-                ))
-              )}
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-zinc-800">Action plan</p>
-            <div className="mt-2 space-y-2">
-              {comparison.actionPlan.length === 0 ? (
-                <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">
-                  No open findings require action in this scan.
-                </p>
-              ) : (
-                comparison.actionPlan.slice(0, 5).map((finding) => (
-                  <div className="rounded-md border border-zinc-200 p-3 text-sm" key={`${finding.suggestedFixOrder}-${finding.title}`}>
-                    <span
-                      className={`inline-flex rounded border px-2 py-1 text-xs font-semibold ${scanCategoryClass(finding.check)}`}
-                    >
-                      {scanCategoryLabel(finding.check)}
-                    </span>
-                    <p className="mt-2 font-semibold text-zinc-900">
-                      {finding.suggestedFixOrder}. {finding.title}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {finding.severity} · {finding.effort.level} · {finding.effort.estimate}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </section>
   );
@@ -462,53 +435,11 @@ function MiniChangeMetric({
     bad: "bg-red-50 text-red-800",
   }[tone];
   return (
-    <div className={`rounded-md px-3 py-2 ${toneClass}`}>
-      <p className="text-lg font-semibold">{value}</p>
+    <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 ${toneClass}`}>
+      <p className="text-sm font-semibold">{value}</p>
       <p className="text-xs font-medium">{label}</p>
     </div>
   );
-}
-
-function ComparisonFindingRow({ finding }: { finding: ApiScanComparison["findings"][number] }) {
-  return (
-    <div className="rounded-md border border-zinc-200 p-3 text-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <span
-            className={`inline-flex rounded border px-2 py-1 text-xs font-semibold ${scanCategoryClass(finding.check)}`}
-          >
-            {scanCategoryLabel(finding.check)}
-          </span>
-          <p className="mt-2 font-semibold text-zinc-900">{finding.title}</p>
-          <p className="mt-1 text-xs text-zinc-500">{finding.affected}</p>
-        </div>
-        <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${changeStatusClass(finding.changeStatus)}`}>
-          {finding.changeStatus}
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-zinc-500">
-        {finding.severity} · {finding.effort.level} · {finding.effort.estimate}
-      </p>
-    </div>
-  );
-}
-
-function scanCategoryLabel(check: string) {
-  return scanLabels[check as ScanOption] ?? check;
-}
-
-function scanCategoryClass(check: string) {
-  return scanCategoryStyles[check as ScanOption] ?? "border-zinc-300 bg-zinc-50 text-zinc-700";
-}
-
-function changeStatusClass(status: string) {
-  if (status === "Fixed") {
-    return "bg-emerald-50 text-emerald-800";
-  }
-  if (status === "Newly introduced") {
-    return "bg-red-50 text-red-800";
-  }
-  return "bg-amber-50 text-amber-800";
 }
 
 function AnalysisHeader({
@@ -566,7 +497,8 @@ function AnalysisHeader({
  * VibeShield's core GenAI surface: turns the selected finding into a single,
  * ready-to-paste prompt for the user's AI builder (Lovable, Cursor, v0, Bolt,
  * Replit). The user never reads or writes code — the same kind of AI that built
- * the site repairs it.
+ * the site repairs it. Rendered directly beside the finding it targets, so the
+ * "here's the issue" and "here's the fix" panels never drift apart.
  */
 const AI_BUILDERS = ["Generic", "Lovable", "Cursor", "v0", "Bolt", "Replit"] as const;
 type AiBuilder = (typeof AI_BUILDERS)[number];
@@ -612,39 +544,31 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
   }
 
   return (
-    <aside className="rounded-md border border-zinc-300 bg-white p-5">
-      <h2 className="text-xl font-semibold">Generate fix prompt</h2>
+    <aside className="flex flex-col rounded-md border border-teal-200 bg-teal-50/40 p-5">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-xl font-semibold">Fix prompt</h2>
+        {finding && (
+          <span
+            className={`shrink-0 rounded border px-2 py-1 text-xs font-semibold ${severityStyles[finding.severity]}`}
+          >
+            {finding.severity}
+          </span>
+        )}
+      </div>
       <p className="mt-1 text-sm text-zinc-600">
-        Create a ready-to-paste prompt for your AI builder (Lovable, Cursor, v0,
-        Bolt, Replit) — let the AI that built your site repair it.
+        {finding
+          ? `Ready-to-paste prompt for "${finding.title}" — hand it to your AI builder.`
+          : "Select a finding to generate a fix prompt."}
       </p>
 
-      {!finding && (
-        <p className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600">
-          Select a finding to generate a fix prompt.
-        </p>
-      )}
-
       {finding && (
-        <div className="mt-4 space-y-4">
-          <div className="rounded-md border border-zinc-200 p-3">
-            <span
-              className={`rounded border px-2 py-1 text-xs font-semibold ${severityStyles[finding.severity]}`}
-            >
-              {finding.severity}
-            </span>
-            <p className="mt-2 text-sm font-semibold">{finding.title}</p>
-            <p className="mt-1 truncate text-xs text-zinc-500">
-              {finding.affected}
-            </p>
-          </div>
-
+        <div className="mt-4 flex flex-1 flex-col space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-zinc-600" htmlFor="builder-select">
               AI builder
             </label>
             <select
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
               id="builder-select"
               onChange={(e) => setBuilder(e.target.value as AiBuilder)}
               value={builder}
@@ -675,14 +599,14 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
           )}
 
           {prompt && (
-            <div className="space-y-2">
+            <div className="flex flex-1 flex-col space-y-2">
               <textarea
-                className="min-h-48 w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-xs text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                className="min-h-48 w-full flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-xs text-zinc-800 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                 readOnly
                 value={prompt}
               />
               <button
-                className="w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
+                className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500"
                 onClick={handleCopy}
                 type="button"
               >
