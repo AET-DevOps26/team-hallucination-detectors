@@ -96,8 +96,49 @@ jobs:
       # Pin to the immutable image tag published for this commit so the deploy
       # ships exactly the merged code (overrides values.yaml's `tag: latest`).
       # On a manual dispatch, github.sha is the SHA of the ref being run.
+
+      # The vibeshield-secrets Secret may have been created outside Helm (e.g.
+      # via kubectl apply). Helm refuses to manage resources it doesn't own, so
+      # we adopt it by adding the required labels/annotations before upgrading.
+      - name: Adopt existing secrets into Helm
+        run: |
+          kubectl annotate secret vibeshield-secrets -n ge65poj \
+            meta.helm.sh/release-name=vibeshield \
+            meta.helm.sh/release-namespace=ge65poj \
+            --overwrite || true
+          kubectl label secret vibeshield-secrets -n ge65poj \
+            app.kubernetes.io/managed-by=Helm \
+            --overwrite || true
+
       - name: Deploy with Helm
         run: |
           helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
-            --set images.tag=sha-${{ github.sha }}
+            --set-string images.tag=sha-${{ github.sha }} \
+            --set-string secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
+            --set-string secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }} \
+            --set-string secrets.openaiApiKey=${{ secrets.OPENAI_API_KEY }} \
+            --set-string secrets.logosApiKey=${{ secrets.LOGOS_API_KEY }}
           kubectl get pods -n ge65poj
+
+      - name: Deploy monitoring stack
+        run: |
+          kubectl create serviceaccount prometheus -n ge65poj --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f k8s/monitoring/rbac.yml || true
+          kubectl apply -f k8s/monitoring/prometheus-configmap.yml
+          kubectl apply -f k8s/monitoring/prometheus-pvc.yml
+          kubectl apply -f k8s/monitoring/prometheus-deployment.yml
+          kubectl apply -f k8s/monitoring/prometheus-service.yml
+          kubectl apply -f k8s/monitoring/loki-configmap.yml
+          kubectl apply -f k8s/monitoring/loki-pvc.yml
+          kubectl apply -f k8s/monitoring/loki-deployment.yml
+          kubectl apply -f k8s/monitoring/loki-service.yml
+          kubectl apply -f k8s/monitoring/promtail-configmap.yml
+          kubectl apply -f k8s/monitoring/promtail-daemonset.yml
+          kubectl apply -f k8s/monitoring/grafana-secret.yml
+          kubectl apply -f k8s/monitoring/grafana-configmap.yml
+          kubectl apply -f k8s/monitoring/grafana-dashboard-configmap.yml
+          kubectl apply -f k8s/monitoring/grafana-pvc.yml
+          kubectl apply -f k8s/monitoring/grafana-deployment.yml
+          kubectl apply -f k8s/monitoring/grafana-service.yml
+          kubectl apply -f k8s/monitoring/grafana-ingress.yml
+          kubectl get pods -n ge65poj -l 'app in (prometheus,grafana,loki)'

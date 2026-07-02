@@ -3,7 +3,9 @@ kind: Deployment
 metadata:
   name: langchain-service
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: 1
+  {{- end }}
   selector:
     matchLabels:
       app: langchain-service
@@ -12,16 +14,61 @@ spec:
       labels:
         app: langchain-service
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: langchain-service
           image: "{{ .Values.images.langchainService }}:{{ .Values.images.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8000
           env:
             - name: MODEL_NAME
               value: "{{ .Values.langchainService.modelName }}"
+            - name: OPENAI_BASE_URL
+              value: "{{ .Values.langchainService.openaiBaseUrl }}"
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: vibeshield-secrets
                   key: OPENAI_API_KEY
+                  optional: true
+            - name: LOGOS_BASE_URL
+              value: "{{ .Values.langchainService.logosBaseUrl }}"
+            - name: LOGOS_MODEL_NAME
+              value: "{{ .Values.langchainService.logosModelName }}"
+            - name: LOGOS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: LOGOS_API_KEY
+                  optional: true
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10

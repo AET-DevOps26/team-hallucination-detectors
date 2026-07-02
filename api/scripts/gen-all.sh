@@ -83,4 +83,7 @@ fi
 # TODO(#26): generate the Python client for the langchain-service with
 # openapi-python-client once the backend->GenAI integration starts.
 
+echo "==> Copying openapi.yaml to api-service static resources"
+cp "$ROOT/api/openapi.yaml" "$ROOT/services/api-service/src/main/resources/static/openapi.yaml"
+
 echo "==> Done. Review and commit the regenerated files."

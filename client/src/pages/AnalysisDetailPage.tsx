@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { generateFixPrompt } from "../api/genai";
+import { LLM_PROVIDERS, useLlmProvider } from "../hooks/useLlmProvider";
 import { downloadReport, getReportData, ReportData } from "../api/reports";
 import { getScanComparison, ApiScanComparison } from "../api/scans";
 import { FindingDetailsPanel } from "../components/analysis/FindingDetailsPanel";
@@ -504,6 +505,7 @@ const AI_BUILDERS = ["Generic", "Lovable", "Cursor", "v0", "Bolt", "Replit"] as 
 type AiBuilder = (typeof AI_BUILDERS)[number];
 
 function GenerateFixPrompt({ finding }: { finding?: Finding }) {
+  const { provider, setProvider } = useLlmProvider();
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
@@ -524,7 +526,7 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
     setError("");
     setCopied(false);
     try {
-      const result = await generateFixPrompt(finding, builder);
+      const result = await generateFixPrompt(finding, builder, provider);
       setPrompt(result);
       setStatus("idle");
     } catch (err) {
@@ -577,6 +579,32 @@ function GenerateFixPrompt({ finding }: { finding?: Finding }) {
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-zinc-600">AI provider</span>
+            <div
+              aria-label="AI provider"
+              className="flex items-center gap-0.5 rounded-md border border-zinc-300 p-0.5"
+              role="group"
+            >
+              {LLM_PROVIDERS.map((p) => (
+                <button
+                  aria-pressed={provider === p.value}
+                  className={`flex-1 rounded px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                    provider === p.value
+                      ? "bg-teal-700 text-white"
+                      : "text-zinc-600 hover:text-zinc-900"
+                  }`}
+                  key={p.value}
+                  onClick={() => setProvider(p.value)}
+                  title={`Use ${p.label} for AI generation`}
+                  type="button"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button

@@ -16,5 +16,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: api_service
   flyway:
     enabled: true
+    default-schema: api_service
+    schemas: api_service

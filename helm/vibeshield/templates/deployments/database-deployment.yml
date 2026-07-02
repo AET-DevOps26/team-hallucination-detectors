@@ -12,9 +12,21 @@ spec:
       labels:
         app: database
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: database
           image: postgres:16
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 5432
           env:
@@ -23,11 +35,29 @@ spec:
             - name: POSTGRES_USER
               value: "{{ .Values.database.user }}"
             - name: POSTGRES_PASSWORD
-              value: "{{ .Values.database.password }}"
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
               subPath: postgres
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - "{{ .Values.database.user }}"
+            initialDelaySeconds: 15
+            periodSeconds: 10
       volumes:
         - name: postgres-data
           persistentVolumeClaim:

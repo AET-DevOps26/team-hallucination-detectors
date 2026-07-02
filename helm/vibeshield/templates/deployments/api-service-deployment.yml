@@ -3,7 +3,9 @@ kind: Deployment
 metadata:
   name: api-service
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: 1
+  {{- end }}
   selector:
     matchLabels:
       app: api-service
@@ -12,9 +14,21 @@ spec:
       labels:
         app: api-service
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api-service
           image: "{{ .Values.images.apiService }}:{{ .Values.images.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: SPRING_FLYWAY_BASELINE_ON_MIGRATE
               value: "true"
@@ -25,5 +39,30 @@ spec:
                 secretKeyRef:
                   name: vibeshield-secrets
                   key: APP_JWT_SECRET
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
           ports:
             - containerPort: 8080
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
