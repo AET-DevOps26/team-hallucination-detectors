@@ -96,6 +96,20 @@ jobs:
       # Pin to the immutable image tag published for this commit so the deploy
       # ships exactly the merged code (overrides values.yaml's `tag: latest`).
       # On a manual dispatch, github.sha is the SHA of the ref being run.
+
+      # The vibeshield-secrets Secret may have been created outside Helm (e.g.
+      # via kubectl apply). Helm refuses to manage resources it doesn't own, so
+      # we adopt it by adding the required labels/annotations before upgrading.
+      - name: Adopt existing secrets into Helm
+        run: |
+          kubectl annotate secret vibeshield-secrets -n ge65poj \
+            meta.helm.sh/release-name=vibeshield \
+            meta.helm.sh/release-namespace=ge65poj \
+            --overwrite || true
+          kubectl label secret vibeshield-secrets -n ge65poj \
+            app.kubernetes.io/managed-by=Helm \
+            --overwrite || true
+
       - name: Deploy with Helm
         run: |
           helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
