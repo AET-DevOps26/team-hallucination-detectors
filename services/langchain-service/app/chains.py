@@ -1,18 +1,48 @@
+from typing import Literal
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from app.settings import settings
 
 
-def _model(temperature: float = 0.2) -> ChatOpenAI:
+# The LLM backends VibeShield can talk to. Both are OpenAI-compatible, so they
+# differ only by base URL, API key, and model name.
+Provider = Literal["openai", "logos"]
+
+
+class ProviderNotConfigured(Exception):
+    """The selected provider has no API key configured (e.g. Logos key missing)."""
+
+    def __init__(self, provider: str) -> None:
+        self.provider = provider
+        super().__init__(f"LLM provider '{provider}' is not configured.")
+
+
+def _provider_config(provider: Provider) -> tuple[str, str, str]:
+    """Return (api_key, base_url, model) for the given provider."""
+    if provider == "logos":
+        return (
+            settings.logos_api_key,
+            settings.logos_base_url,
+            settings.logos_model_name,
+        )
+    return settings.openai_api_key, settings.openai_base_url, settings.model_name
+
+
+def _model(provider: Provider = "openai", temperature: float = 0.2) -> ChatOpenAI:
+    api_key, base_url, model = _provider_config(provider)
+    if not api_key:
+        raise ProviderNotConfigured(provider)
     return ChatOpenAI(
-        model=settings.model_name,
-        api_key=settings.openai_api_key,
+        model=model,
+        api_key=api_key,
+        base_url=base_url,
         temperature=temperature,
     )
 
 
-def build_chat_chain():
+def build_chat_chain(provider: Provider = "openai"):
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -24,7 +54,7 @@ def build_chat_chain():
         ]
     )
 
-    return prompt | _model()
+    return prompt | _model(provider)
 
 
 # VibeShield's core GenAI capability: turn one security finding into a single,
@@ -65,7 +95,7 @@ FIX_PROMPT_HUMAN = (
 )
 
 
-def build_fix_prompt_chain():
+def build_fix_prompt_chain(provider: Provider = "openai"):
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", FIX_PROMPT_SYSTEM),
@@ -73,4 +103,4 @@ def build_fix_prompt_chain():
         ]
     )
 
-    return prompt | _model(temperature=0.3)
+    return prompt | _model(provider, temperature=0.3)

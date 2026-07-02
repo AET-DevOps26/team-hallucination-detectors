@@ -11,6 +11,9 @@ images:
 
 langchainService:
   modelName: "gpt-4o-mini"
+  openaiBaseUrl: "https://api.openai.com/v1"
+  logosBaseUrl: "https://logos.aet.cit.tum.de/v1"
+  logosModelName: "openai/gpt-oss-120b"
 
 database:
   name: vibeshield
@@ -23,6 +26,7 @@ secrets:
   jwtSecret: "dev-secret-change-in-production"
   dbPassword: vibeshield
   openaiApiKey: ""
+  logosApiKey: ""
 
 autoscaling:
   enabled: false

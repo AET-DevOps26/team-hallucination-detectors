@@ -4,10 +4,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "vibeshield-langchain-service"
 
-    # Optional at startup so the service starts and /health responds even without
-    # a key. Requests to /chat and /fix-prompt will fail with a clear 503 if unset.
+    # OpenAI (openai.com) provider. Keys are optional so the service can run
+    # against a single provider — the endpoint returns a clean 503 if a caller
+    # selects a provider whose key was never configured.
     openai_api_key: str = ""
-    model_name: str = "gpt-4o-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
+    model_name: str = "gpt-4o-mini"  # OpenAI model (env: MODEL_NAME)
+
+    # TUM Logos gateway — OpenAI-compatible, provided by the course.
+    logos_api_key: str = ""
+    logos_base_url: str = "https://logos.aet.cit.tum.de/v1"
+    logos_model_name: str = "openai/gpt-oss-120b"
 
     port: int = 8000
     reload: bool = False
@@ -17,10 +24,6 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-
-    @property
-    def openai_configured(self) -> bool:
-        return bool(self.openai_api_key and not self.openai_api_key.startswith("sk-proj-..."))
 
 
 settings = Settings()

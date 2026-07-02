@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import type { Finding } from "../types/domain";
+import type { LlmProvider } from "../hooks/useLlmProvider";
 
 /**
  * Client for VibeShield's GenAI capability. The gateway routes /langchain/* to
@@ -21,6 +22,7 @@ export type FixPromptInput = Pick<
 export async function generateFixPrompt(
   finding: FixPromptInput,
   builder: string = "Generic",
+  provider: LlmProvider = "logos",
 ): Promise<string> {
   const { data } = await apiClient.post<{ prompt: string }>(
     "/langchain/fix-prompt",
@@ -32,6 +34,7 @@ export async function generateFixPrompt(
       summary: finding.summary,
       impact: finding.impact,
       builder,
+      provider,
     },
     { timeout: 30000 },
   );

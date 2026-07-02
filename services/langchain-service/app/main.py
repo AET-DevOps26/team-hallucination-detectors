@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 from typing import Any, Optional
 
 from fastapi import FastAPI, Request
@@ -10,7 +11,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.chains import build_chat_chain, build_fix_prompt_chain
+from app.chains import (
+    Provider,
+    ProviderNotConfigured,
+    build_chat_chain,
+    build_fix_prompt_chain,
+)
 from app.settings import settings
 
 
@@ -20,29 +26,23 @@ app = FastAPI(title=settings.app_name)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-# Chains are built lazily so the service starts and /health responds even when
-# OPENAI_API_KEY is not configured. Requests that need the model go through
-# _require_openai() first and get a clear 503 before any chain is invoked.
-_chat_chain = None
-_fix_prompt_chain = None
+# Chains are cheap but hold a provider-specific model client, so build one per
+# provider on first use and reuse it. A build raises ProviderNotConfigured when
+# the provider's key is missing; lru_cache never caches that, so it retries once
+# the key is configured.
+@lru_cache(maxsize=None)
+def _chat_chain(provider: Provider):
+    return build_chat_chain(provider)
 
 
-def _get_chat_chain():
-    global _chat_chain
-    if _chat_chain is None:
-        _chat_chain = build_chat_chain()
-    return _chat_chain
-
-
-def _get_fix_prompt_chain():
-    global _fix_prompt_chain
-    if _fix_prompt_chain is None:
-        _fix_prompt_chain = build_fix_prompt_chain()
-    return _fix_prompt_chain
+@lru_cache(maxsize=None)
+def _fix_prompt_chain(provider: Provider):
+    return build_fix_prompt_chain(provider)
 
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
+    provider: Provider = "openai"
 
 
 class ChatResponse(BaseModel):
@@ -59,6 +59,7 @@ class FixPromptRequest(BaseModel):
     summary: str = ""
     impact: str = ""
     builder: str = "Generic"
+    provider: Provider = "openai"
 
 
 class FixPromptResponse(BaseModel):
@@ -96,6 +97,17 @@ async def handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSON
     return _error(exc.status_code, "HTTP_ERROR", str(exc.detail))
 
 
+@app.exception_handler(ProviderNotConfigured)
+async def handle_provider_not_configured(_: Request, exc: ProviderNotConfigured) -> JSONResponse:
+    """The caller picked a provider (e.g. Logos) whose API key isn't set on this deployment."""
+    return _error(
+        503,
+        "PROVIDER_NOT_CONFIGURED",
+        f"The '{exc.provider}' AI provider is not configured on the server.",
+        {"provider": exc.provider},
+    )
+
+
 @app.exception_handler(Exception)
 async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
     """Catch-all that hides internal details behind a generic 500, matching the Java services."""
@@ -111,18 +123,9 @@ def health():
     }
 
 
-def _require_openai() -> None:
-    if not settings.openai_configured:
-        raise StarletteHTTPException(
-            status_code=503,
-            detail="OPENAI_API_KEY is not configured. Copy .env.example to .env and add your key.",
-        )
-
-
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    _require_openai()
-    result = await _get_chat_chain().ainvoke({"message": request.message})
+    result = await _chat_chain(request.provider).ainvoke({"message": request.message})
 
     return ChatResponse(response=result.content)
 
@@ -130,8 +133,7 @@ async def chat(request: ChatRequest):
 @app.post("/fix-prompt", response_model=FixPromptResponse)
 async def fix_prompt(request: FixPromptRequest):
     """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature)."""
-    _require_openai()
-    result = await _get_fix_prompt_chain().ainvoke(
+    result = await _fix_prompt_chain(request.provider).ainvoke(
         {
             "title": request.title,
             "severity": request.severity,
