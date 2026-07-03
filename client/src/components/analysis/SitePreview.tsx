@@ -68,11 +68,6 @@ export function SitePreview({ url }: SitePreviewProps) {
           title={`Preview of ${host}`}
         />
       </div>
-
-      <p className="border-t border-line px-4 py-2 text-xs text-muted">
-        Preview is best-effort — some sites block embedding. Use “Open live site”
-        if it appears blank.
-      </p>
     </div>
   );
 }

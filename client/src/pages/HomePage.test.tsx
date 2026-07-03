@@ -38,10 +38,24 @@ describe("HomePage", () => {
     await waitFor(() => expect(onScan).toHaveBeenCalledWith("https://example.com"));
   });
 
-  it("offers advanced options to signed-in users", () => {
-    const navigate = vi.fn();
-    render(<HomePage {...baseProps} hasSession navigate={navigate} />);
-    fireEvent.click(screen.getByText(/advanced options/i));
-    expect(navigate).toHaveBeenCalledWith("/analysis/new");
+  it("expands inline advanced options and scans with the chosen scope", async () => {
+    const onScan = vi.fn().mockResolvedValue(undefined);
+    render(<HomePage {...baseProps} onScan={onScan} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /advanced options/i }));
+    expect(screen.getByText(/checks to run/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/include subdomains/i));
+
+    fireEvent.change(screen.getByLabelText(/website url/i), {
+      target: { value: "https://example.com/" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /scan my site/i }));
+
+    await waitFor(() =>
+      expect(onScan).toHaveBeenCalledWith(
+        "https://example.com",
+        expect.objectContaining({ includeSubdomains: true }),
+      ),
+    );
   });
 });

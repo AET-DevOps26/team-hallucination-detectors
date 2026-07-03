@@ -15,7 +15,7 @@ export function NotFoundPage({ navigate }: NotFoundPageProps) {
         <p className="mt-3 text-sm text-muted">
           The page you are looking for doesn&apos;t exist or may have been moved.
         </p>
-        <Button className="mt-6" onClick={() => navigate("/profile")} size="lg">
+        <Button className="mt-6" onClick={() => navigate("/analysis")} size="lg">
           Back to dashboard
         </Button>
       </section>

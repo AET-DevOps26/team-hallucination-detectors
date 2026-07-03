@@ -13,6 +13,6 @@ describe("NotFoundPage", () => {
     const nav = vi.fn();
     render(<NotFoundPage navigate={nav} />);
     fireEvent.click(screen.getByText(/back to dashboard/i));
-    expect(nav).toHaveBeenCalledWith("/profile");
+    expect(nav).toHaveBeenCalledWith("/analysis");
   });
 });

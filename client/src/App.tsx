@@ -7,15 +7,13 @@ import { useAnalysisState } from "./hooks/useAnalysisState";
 import { useApiHealth } from "./hooks/useApiHealth";
 import { useAppRouter } from "./hooks/useAppRouter";
 import { useAuthState } from "./hooks/useAuthState";
-import { useTeamState } from "./hooks/useTeamState";
 import { useTheme } from "./hooks/useTheme";
 import { AnalysisDetailPage } from "./pages/AnalysisDetailPage";
 import { AnalysisListPage } from "./pages/AnalysisListPage";
-import { HomePage } from "./pages/HomePage";
+import { HomePage, ScanOverrides } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewAnalysisPage } from "./pages/NewAnalysisPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { ProfilePage } from "./pages/ProfilePage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { NewAnalysisInput } from "./types/domain";
 
@@ -29,7 +27,6 @@ export default function App() {
     route: router.route,
     enabled: Boolean(auth.session),
   });
-  const team = useTeamState();
   const { toast } = useToast();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -45,17 +42,17 @@ export default function App() {
 
   const isAuthenticated = Boolean(auth.session);
 
-  function buildScan(url: string): NewAnalysisInput {
+  function buildScan(url: string, overrides?: ScanOverrides): NewAnalysisInput {
     return {
       url,
-      selectedScans: defaultScanSelection,
-      crawlDepth: 0,
-      includeSubdomains: false,
+      selectedScans: overrides?.selectedScans ?? defaultScanSelection,
+      crawlDepth: overrides?.crawlDepth ?? 0,
+      includeSubdomains: overrides?.includeSubdomains ?? false,
     };
   }
 
-  async function startScan(url: string) {
-    const input = buildScan(url);
+  async function startScan(url: string, overrides?: ScanOverrides) {
+    const input = buildScan(url, overrides);
     if (auth.session) {
       await analysis.createAnalysis(input); // navigates to the detail page
       return;
@@ -87,17 +84,17 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-bg text-fg">
+    <div className="flex min-h-full flex-col overflow-x-clip bg-bg text-fg">
+      <Navbar
+        apiState={apiState}
+        navigate={router.navigate}
+        onLogout={auth.handleLogout}
+        onToggleTheme={toggleTheme}
+        route={router.route}
+        session={auth.session}
+        theme={theme}
+      />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-5 pb-8 sm:px-6 lg:px-8">
-        <Navbar
-          apiState={apiState}
-          navigate={router.navigate}
-          onLogout={auth.handleLogout}
-          onToggleTheme={toggleTheme}
-          route={router.route}
-          session={auth.session}
-          theme={theme}
-        />
         <div className="flex flex-1 flex-col pt-6">
           <AppRoute
             analysis={analysis}
@@ -105,7 +102,6 @@ export default function App() {
             onScan={startScan}
             requireAuth={requireAuth}
             router={router}
-            team={team}
           />
         </div>
       </div>
@@ -132,13 +128,12 @@ export default function App() {
 type AppRouteProps = {
   analysis: ReturnType<typeof useAnalysisState>;
   auth: ReturnType<typeof useAuthState>;
-  onScan: (url: string) => Promise<void>;
+  onScan: (url: string, overrides?: ScanOverrides) => Promise<void>;
   requireAuth: () => void;
   router: ReturnType<typeof useAppRouter>;
-  team: ReturnType<typeof useTeamState>;
 };
 
-function AppRoute({ analysis, auth, onScan, requireAuth, router, team }: AppRouteProps) {
+function AppRoute({ analysis, auth, onScan, requireAuth, router }: AppRouteProps) {
   const { navigate, route } = router;
 
   if (route === "/reset-password") {
@@ -161,18 +156,6 @@ function AppRoute({ analysis, auth, onScan, requireAuth, router, team }: AppRout
     return <RequireAuthRedirect navigate={navigate} onRequireAuth={requireAuth} />;
   }
 
-  if (route === "/profile") {
-    return (
-      <ProfilePage
-        analyses={analysis.analyses}
-        inviteMember={team.inviteMember}
-        members={team.members}
-        navigate={navigate}
-        session={auth.session}
-        sites={analysis.sites}
-      />
-    );
-  }
   if (route === "/analysis") {
     return <AnalysisListPage analyses={analysis.analyses} navigate={navigate} />;
   }
@@ -193,9 +176,7 @@ function AppRoute({ analysis, auth, onScan, requireAuth, router, team }: AppRout
         onRescan={analysis.rescanAnalysis}
         onSelectFinding={analysis.setSelectedFindingId}
         onUpdateFinding={analysis.updateFinding}
-        resolutionReason={analysis.resolutionReason}
         selectedFindingId={analysis.selectedFindingId}
-        setResolutionReason={analysis.setResolutionReason}
       />
     );
   }
