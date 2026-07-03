@@ -37,6 +37,8 @@ services:
     build:
       context: ./services/langchain-service
     container_name: vibeshield-langchain
+    depends_on:
+      - ollama
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -44,6 +46,28 @@ services:
       LOGOS_API_KEY: ${LOGOS_API_KEY:-}
       LOGOS_BASE_URL: ${LOGOS_BASE_URL:-https://logos.aet.cit.tum.de/v1}
       LOGOS_MODEL_NAME: ${LOGOS_MODEL_NAME:-openai/gpt-oss-120b}
+      SELFHOSTED_API_KEY: ${SELFHOSTED_API_KEY:-ollama}
+      SELFHOSTED_BASE_URL: ${SELFHOSTED_BASE_URL:-http://ollama:11434/v1}
+      SELFHOSTED_MODEL_NAME: ${SELFHOSTED_MODEL_NAME:-llama3.2:3b}
+
+  # Self-hosted, OpenAI-compatible LLM runtime for the "selfhosted" provider.
+  # On first boot it pulls the configured model, then serves the OpenAI-compatible
+  # API on :11434. Weights are cached in the ollama_models volume so restarts are
+  # fast. CPU-only inference is slow — keep to small models (1B–3B).
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vibeshield-ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull "${SELFHOSTED_MODEL_NAME:-llama3.2:3b}"
+        wait
+    expose:
+      - "11434"
+    volumes:
+      - ollama_models:/root/.ollama
 
   client:
     build:
@@ -81,3 +105,4 @@ services:
       - postgres_data:/var/lib/postgresql/data
 volumes:
     postgres_data:
+    ollama_models:
