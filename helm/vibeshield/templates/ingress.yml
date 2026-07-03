@@ -38,6 +38,14 @@ spec:
                 port:
                   number: 80
 
+          - path: /openapi.yaml
+            pathType: Exact
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+
           - path: /
             pathType: Prefix
             backend:
