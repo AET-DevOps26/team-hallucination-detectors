@@ -1,5 +1,7 @@
 import { scanCategoryStyles, severityStyles } from "../../constants/scans";
 import { Analysis, Finding, FindingStatus } from "../../types/domain";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
 import { FindingDetail } from "./FindingDetail";
 
 type FindingDetailsPanelProps = {
@@ -22,60 +24,58 @@ export function FindingDetailsPanel({
   setResolutionReason,
 }: FindingDetailsPanelProps) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
+    <div className="rounded-xl border border-line bg-surface p-5 shadow-card">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
         <div>
-          <p className="font-mono text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <p className="font-mono text-xs font-medium uppercase tracking-wide text-muted">
             {finding.id}
           </p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-fg">
             {finding.title}
           </h3>
         </div>
-        <span
-          className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${severityStyles[finding.severity]}`}
-        >
+        <Badge className={severityStyles[finding.severity]} size="md">
           {finding.severity}
-        </span>
+        </Badge>
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-md bg-zinc-50 p-3">
+        <div className="rounded-lg bg-elevated p-3">
           <FindingDetail label="Status" value={finding.status} />
         </div>
-        <div className="rounded-md bg-zinc-50 p-3">
-          <p className="text-xs font-semibold uppercase text-zinc-500">Scan category</p>
+        <div className="rounded-lg bg-elevated p-3">
+          <p className="text-xs font-semibold uppercase text-muted">Scan category</p>
           <span
             className={`mt-1 inline-flex rounded border px-2 py-1 text-sm font-semibold ${scanCategoryStyles[finding.check]}`}
           >
             {finding.checkLabel}
           </span>
         </div>
-        <div className="rounded-md bg-zinc-50 p-3 lg:col-span-2">
+        <div className="rounded-lg bg-elevated p-3 lg:col-span-2">
           <FindingDetail
             label="Affected URL, file, route, or endpoint"
             value={finding.affected}
           />
         </div>
-        <div className="rounded-md border border-zinc-200 p-4 lg:col-span-2">
+        <div className="rounded-lg border border-line p-4 lg:col-span-2">
           <FindingDetail label="What happened" value={finding.summary} />
         </div>
-        <div className="rounded-md border border-zinc-200 p-4 lg:col-span-2">
+        <div className="rounded-lg border border-line p-4 lg:col-span-2">
           <FindingDetail label="Potential impact" value={finding.impact} />
         </div>
         {finding.reason && (
-          <div className="rounded-md border border-zinc-200 p-4 lg:col-span-2">
+          <div className="rounded-lg border border-line p-4 lg:col-span-2">
             <FindingDetail label="Reason" value={finding.reason} />
           </div>
         )}
       </div>
 
       <label className="mt-5 block">
-        <span className="text-sm font-medium text-zinc-700">
+        <span className="text-sm font-medium text-muted">
           Fixed or ignored reason
         </span>
         <textarea
-          className="mt-2 min-h-24 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+          className="mt-2 min-h-24 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           onChange={(event) => setResolutionReason(event.target.value)}
           placeholder="Short note for the audit trail"
           value={resolutionReason}
@@ -84,26 +84,18 @@ export function FindingDetailsPanel({
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button
-          className="rounded-md bg-emerald-700 px-4 py-3 font-semibold text-white hover:bg-emerald-800"
+          className="rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
           onClick={() => onUpdateFinding(analysis.id, finding.id, "Fixed")}
           type="button"
         >
           Mark fixed
         </button>
-        <button
-          className="rounded-md bg-zinc-800 px-4 py-3 font-semibold text-white hover:bg-zinc-700"
-          onClick={() => onUpdateFinding(analysis.id, finding.id, "Ignored")}
-          type="button"
-        >
+        <Button onClick={() => onUpdateFinding(analysis.id, finding.id, "Ignored")} variant="secondary">
           Ignore
-        </button>
-        <button
-          className="rounded-md border border-zinc-300 px-4 py-3 font-semibold text-zinc-700 hover:border-teal-500"
-          onClick={() => onUpdateFinding(analysis.id, finding.id, "Open")}
-          type="button"
-        >
+        </Button>
+        <Button onClick={() => onUpdateFinding(analysis.id, finding.id, "Open")} variant="ghost">
           Reopen
-        </button>
+        </Button>
       </div>
     </div>
   );

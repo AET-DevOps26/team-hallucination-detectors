@@ -6,8 +6,8 @@ type FindingDetailProps = {
 export function FindingDetail({ label, value }: FindingDetailProps) {
   return (
     <div>
-      <p className="text-sm font-medium text-zinc-500">{label}</p>
-      <p className="mt-1 text-zinc-900">{value}</p>
+      <p className="text-sm font-medium text-muted">{label}</p>
+      <p className="mt-1 text-fg">{value}</p>
     </div>
   );
 }

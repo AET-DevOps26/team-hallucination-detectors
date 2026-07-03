@@ -1,19 +1,26 @@
+import { useEffect, useRef, useState } from "react";
+import { AuthModal } from "./components/auth/AuthModal";
 import { Navbar } from "./components/layout/Navbar";
-import { ServiceBadge } from "./components/layout/ServiceBadge";
+import { useToast } from "./components/ui/useToast";
+import { defaultScanSelection } from "./constants/scans";
 import { useAnalysisState } from "./hooks/useAnalysisState";
 import { useApiHealth } from "./hooks/useApiHealth";
 import { useAppRouter } from "./hooks/useAppRouter";
 import { useAuthState } from "./hooks/useAuthState";
 import { useTeamState } from "./hooks/useTeamState";
+import { useTheme } from "./hooks/useTheme";
 import { AnalysisDetailPage } from "./pages/AnalysisDetailPage";
 import { AnalysisListPage } from "./pages/AnalysisListPage";
-import { LandingRedirect } from "./pages/LandingRedirect";
+import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewAnalysisPage } from "./pages/NewAnalysisPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { NewAnalysisInput } from "./types/domain";
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const router = useAppRouter();
   const apiState = useApiHealth();
   const auth = useAuthState({ navigate: router.navigate });
@@ -23,37 +30,101 @@ export default function App() {
     enabled: Boolean(auth.session),
   });
   const team = useTeamState();
+  const { toast } = useToast();
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  // The scan a logged-out user asked for; auto-started once they authenticate.
+  const pendingScan = useRef<NewAnalysisInput | null>(null);
+  // Refs keep the resume effect keyed only on session without re-running when
+  // the (unmemoized) analysis hook or toast identity changes.
+  const analysisRef = useRef(analysis);
+  analysisRef.current = analysis;
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+  const prevSession = useRef(auth.session);
+
   const isAuthenticated = Boolean(auth.session);
 
+  function buildScan(url: string): NewAnalysisInput {
+    return {
+      url,
+      selectedScans: defaultScanSelection,
+      crawlDepth: 0,
+      includeSubdomains: false,
+    };
+  }
+
+  async function startScan(url: string) {
+    const input = buildScan(url);
+    if (auth.session) {
+      await analysis.createAnalysis(input); // navigates to the detail page
+      return;
+    }
+    pendingScan.current = input;
+    setAuthModalOpen(true);
+  }
+
+  // Auto-resume a gated scan the moment the user logs in.
+  useEffect(() => {
+    const justLoggedIn = !prevSession.current && Boolean(auth.session);
+    prevSession.current = auth.session;
+    if (justLoggedIn && pendingScan.current) {
+      const input = pendingScan.current;
+      pendingScan.current = null;
+      setAuthModalOpen(false);
+      analysisRef.current.createAnalysis(input).catch((error) => {
+        toastRef.current(
+          error instanceof Error ? error.message : "Could not start the scan.",
+          "error",
+        );
+      });
+    }
+  }, [auth.session]);
+
+  function requireAuth() {
+    pendingScan.current = null;
+    setAuthModalOpen(true);
+  }
+
   return (
-    <div className="min-h-full bg-zinc-100 text-zinc-950">
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-5 pb-6 sm:px-6 lg:px-8">
-        {isAuthenticated && (
-          <>
-            <Navbar
-              onLogout={auth.handleLogout}
-              route={router.route}
-              navigate={router.navigate}
-              session={auth.session}
-            />
-            <header className="mb-5 flex flex-col gap-4 border-b border-zinc-300 pb-5 pt-6 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-wide text-teal-700">
-                  VibeShield
-                </p>
-                <h1 className="mt-2 text-3xl font-semibold">Security console</h1>
-              </div>
-              <ServiceBadge state={apiState} />
-            </header>
-          </>
-        )}
-        <AppRoute
-          analysis={analysis}
-          auth={auth}
-          router={router}
-          team={team}
+    <div className="flex min-h-full flex-col bg-bg text-fg">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-5 pb-8 sm:px-6 lg:px-8">
+        <Navbar
+          apiState={apiState}
+          navigate={router.navigate}
+          onLogout={auth.handleLogout}
+          onToggleTheme={toggleTheme}
+          route={router.route}
+          session={auth.session}
+          theme={theme}
         />
+        <div className="flex flex-1 flex-col pt-6">
+          <AppRoute
+            analysis={analysis}
+            auth={auth}
+            onScan={startScan}
+            requireAuth={requireAuth}
+            router={router}
+            team={team}
+          />
+        </div>
       </div>
+
+      <AuthModal
+        authError={auth.authError}
+        authMessage={auth.authMessage}
+        authMode={auth.authMode}
+        authStatus={auth.authStatus}
+        email={auth.email}
+        onAuthModeChange={auth.setAuthMode}
+        onAuthSubmit={auth.handleAuthSubmit}
+        onClose={() => setAuthModalOpen(false)}
+        open={authModalOpen && !isAuthenticated}
+        password={auth.password}
+        pendingUrl={pendingScan.current?.url}
+        setEmail={auth.setEmail}
+        setPassword={auth.setPassword}
+      />
     </div>
   );
 }
@@ -61,54 +132,55 @@ export default function App() {
 type AppRouteProps = {
   analysis: ReturnType<typeof useAnalysisState>;
   auth: ReturnType<typeof useAuthState>;
+  onScan: (url: string) => Promise<void>;
+  requireAuth: () => void;
   router: ReturnType<typeof useAppRouter>;
   team: ReturnType<typeof useTeamState>;
 };
 
-function AppRoute({ analysis, auth, router, team }: AppRouteProps) {
-  if (router.route === "/reset-password") {
+function AppRoute({ analysis, auth, onScan, requireAuth, router, team }: AppRouteProps) {
+  const { navigate, route } = router;
+
+  if (route === "/reset-password") {
     const token = new URLSearchParams(window.location.search).get("token") ?? "";
-    return <ResetPasswordPage token={token} navigate={router.navigate} />;
+    return <ResetPasswordPage navigate={navigate} token={token} />;
   }
 
-  if (!auth.session) {
+  if (route === "/login") {
     return <LoginRoute auth={auth} />;
   }
 
-  if (router.route === "/") {
+  if (route === "/") {
     return (
-      <LandingRedirect
-        hasSession={Boolean(auth.session)}
-        navigate={router.navigate}
-      />
+      <HomePage hasSession={Boolean(auth.session)} navigate={navigate} onScan={onScan} />
     );
   }
-  if (router.route === "/login") return <LoginRoute auth={auth} />;
-  if (router.route === "/profile") {
+
+  // Everything below requires a session: bounce home and open the auth modal.
+  if (!auth.session) {
+    return <RequireAuthRedirect navigate={navigate} onRequireAuth={requireAuth} />;
+  }
+
+  if (route === "/profile") {
     return (
       <ProfilePage
         analyses={analysis.analyses}
         inviteMember={team.inviteMember}
         members={team.members}
-        navigate={router.navigate}
+        navigate={navigate}
         session={auth.session}
         sites={analysis.sites}
       />
     );
   }
-  if (router.route === "/analysis") {
-    return (
-      <AnalysisListPage
-        analyses={analysis.analyses}
-        navigate={router.navigate}
-      />
-    );
+  if (route === "/analysis") {
+    return <AnalysisListPage analyses={analysis.analyses} navigate={navigate} />;
   }
-  if (router.route === "/analysis/new") {
+  if (route === "/analysis/new") {
     return (
       <NewAnalysisPage
         createAnalysis={analysis.createAnalysis}
-        navigate={router.navigate}
+        navigate={navigate}
         sites={analysis.sites}
       />
     );
@@ -117,9 +189,9 @@ function AppRoute({ analysis, auth, router, team }: AppRouteProps) {
     return (
       <AnalysisDetailPage
         analysis={analysis.currentAnalysis}
-        navigate={router.navigate}
-        onSelectFinding={analysis.setSelectedFindingId}
+        navigate={navigate}
         onRescan={analysis.rescanAnalysis}
+        onSelectFinding={analysis.setSelectedFindingId}
         onUpdateFinding={analysis.updateFinding}
         resolutionReason={analysis.resolutionReason}
         selectedFindingId={analysis.selectedFindingId}
@@ -127,12 +199,22 @@ function AppRoute({ analysis, auth, router, team }: AppRouteProps) {
       />
     );
   }
-  return (
-    <LandingRedirect
-      hasSession={Boolean(auth.session)}
-      navigate={router.navigate}
-    />
-  );
+
+  return <NotFoundPage navigate={navigate} />;
+}
+
+function RequireAuthRedirect({
+  navigate,
+  onRequireAuth,
+}: {
+  navigate: (path: string) => void;
+  onRequireAuth: () => void;
+}) {
+  useEffect(() => {
+    navigate("/");
+    onRequireAuth();
+  }, [navigate, onRequireAuth]);
+  return null;
 }
 
 function LoginRoute({ auth }: { auth: ReturnType<typeof useAuthState> }) {

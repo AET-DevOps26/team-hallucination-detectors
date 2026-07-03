@@ -1,5 +1,7 @@
 import { FormEvent, useState } from "react";
 import { resetPassword } from "../api/client";
+import { Alert } from "../components/ui/Alert";
+import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 
 type ResetPasswordPageProps = {
@@ -34,40 +36,31 @@ export function ResetPasswordPage({ token, navigate }: ResetPasswordPageProps) {
 
   if (status === "done") {
     return (
-      <main className="mx-auto grid w-full max-w-5xl gap-6">
-        <section className="rounded-md border border-zinc-300 bg-white p-5">
-          <h2 className="text-xl font-semibold">Password updated</h2>
-          <p className="mt-2 text-sm text-zinc-600">Your password has been changed successfully.</p>
-          <button
-            className="mt-5 w-full rounded-md bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
-            onClick={() => navigate("/login")}
-            type="button"
-          >
+      <main className="mx-auto flex w-full max-w-md flex-col justify-center py-16">
+        <div className="animate-slide-up rounded-2xl border border-line bg-surface p-8 shadow-card">
+          <h2 className="text-xl font-semibold text-fg">Password updated</h2>
+          <p className="mt-2 text-sm text-muted">Your password has been changed successfully.</p>
+          <Button className="mt-5" fullWidth onClick={() => navigate("/login")} size="lg">
             Go to login
-          </button>
-        </section>
+          </Button>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-6">
-      <section className="rounded-md border border-zinc-300 bg-white p-5">
-        <h2 className="text-xl font-semibold">Set a new password</h2>
-
+    <main className="mx-auto flex w-full max-w-md flex-col justify-center py-16">
+      <div className="animate-slide-up rounded-2xl border border-line bg-surface p-8 shadow-card">
+        <h2 className="text-xl font-semibold text-fg">Set a new password</h2>
         <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
           <TextField autoComplete="new-password" label="New password" onChange={setNewPassword} required type="password" value={newPassword} />
           <TextField autoComplete="new-password" label="Confirm new password" onChange={setConfirm} required type="password" value={confirm} />
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          <button
-            className="w-full rounded-md bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
-            disabled={status === "loading"}
-            type="submit"
-          >
+          {error && <Alert tone="error">{error}</Alert>}
+          <Button fullWidth loading={status === "loading"} size="lg" type="submit">
             {status === "loading" ? "Updating..." : "Update password"}
-          </button>
+          </Button>
         </form>
-      </section>
+      </div>
     </main>
   );
 }

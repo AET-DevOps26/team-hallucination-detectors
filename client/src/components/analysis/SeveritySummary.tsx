@@ -13,13 +13,13 @@ export function SeveritySummary({ counts, variant = "light" }: SeveritySummaryPr
         <div
           className={
             variant === "dark"
-              ? "min-w-16 rounded-md border border-white/10 bg-white/10 px-3 py-2 text-center text-white"
-              : `min-w-16 rounded-md border px-3 py-2 text-center ${severityStyles[severity]}`
+              ? "min-w-16 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-center text-white"
+              : `min-w-16 rounded-lg border px-3 py-2 text-center ${severityStyles[severity]}`
           }
           key={severity}
         >
           <p className="text-lg font-semibold">{count}</p>
-          <p className={variant === "dark" ? "text-xs text-zinc-300" : "text-xs"}>
+          <p className={variant === "dark" ? "text-xs text-slate-300" : "text-xs"}>
             {severity}
           </p>
         </div>

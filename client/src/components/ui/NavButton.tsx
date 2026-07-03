@@ -7,10 +7,10 @@ type NavButtonProps = {
 export function NavButton({ active, children, onClick }: NavButtonProps) {
   return (
     <button
-      className={`rounded-md px-4 py-2 text-sm font-semibold ${
+      className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
         active
-          ? "bg-zinc-900 text-white"
-          : "border border-zinc-300 bg-white text-zinc-700 hover:border-teal-500"
+          ? "bg-primary/10 text-primary"
+          : "text-muted hover:bg-elevated hover:text-fg"
       }`}
       onClick={onClick}
       type="button"

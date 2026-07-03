@@ -1,4 +1,6 @@
 import { FormEvent, useState } from "react";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
 import { Metric } from "../components/ui/Metric";
 import { ProfileRow } from "../components/ui/ProfileRow";
 import { Analysis, Session, Site, TeamMember } from "../types/domain";
@@ -39,33 +41,27 @@ export function ProfilePage({
 
   if (!session) {
     return (
-      <main className="rounded-md border border-zinc-300 bg-white p-6">
-        <h2 className="text-2xl font-semibold">Profile unavailable</h2>
-        <p className="mt-2 text-zinc-600">Log in to see your profile overview.</p>
-        <button
-          className="mt-5 rounded-md bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800"
-          onClick={() => navigate("/login")}
-          type="button"
-        >
+      <main className="rounded-xl border border-line bg-surface p-8 text-center shadow-card">
+        <h2 className="text-2xl font-semibold text-fg">Profile unavailable</h2>
+        <p className="mt-2 text-muted">Log in to see your profile overview.</p>
+        <Button className="mt-5" onClick={() => navigate("/login")}>
           Go to login
-        </button>
+        </Button>
       </main>
     );
   }
 
   return (
-    <main className="space-y-5">
-      <section className="rounded-md border border-zinc-300 bg-white p-5">
+    <main className="animate-fade-in space-y-5">
+      <section className="rounded-xl border border-line bg-surface p-6 shadow-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Profile overview</h2>
-            <p className="mt-1 text-zinc-600">
+            <h2 className="text-2xl font-semibold text-fg">Profile overview</h2>
+            <p className="mt-1 text-muted">
               Account, projects, usage, and team access for {session.username}.
             </p>
           </div>
-          <span className="rounded-md bg-teal-100 px-3 py-1.5 text-sm font-semibold text-teal-800">
-            Starter plan
-          </span>
+          <Badge tone="primary">Starter plan</Badge>
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-4">
           <Metric label="Registered sites" value={String(sites.length)} />
@@ -102,25 +98,31 @@ function SitesPanel({
   sites: Site[];
 }) {
   return (
-    <div className="rounded-md border border-zinc-300 bg-white p-5">
-      <h2 className="text-xl font-semibold">Sites</h2>
-      <div className="mt-4 overflow-hidden rounded-md border border-zinc-200">
-        {sites.map((site) => {
-          const siteAnalyses = analyses.filter((analysis) => analysis.siteId === site.id);
-          return (
-            <div className="grid gap-3 border-b border-zinc-200 p-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_130px_150px]" key={site.id}>
-              <div className="min-w-0">
-                <p className="font-semibold">{site.name}</p>
-                <p className="truncate text-sm text-zinc-500">{site.url}</p>
+    <div className="rounded-xl border border-line bg-surface p-6 shadow-card">
+      <h2 className="text-xl font-semibold text-fg">Sites</h2>
+      {sites.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed border-line bg-elevated px-4 py-8 text-center text-sm text-muted">
+          No sites registered yet. Run a scan to add one.
+        </p>
+      ) : (
+        <div className="mt-4 overflow-hidden rounded-lg border border-line">
+          {sites.map((site) => {
+            const siteAnalyses = analyses.filter((analysis) => analysis.siteId === site.id);
+            return (
+              <div className="grid gap-3 border-b border-line p-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_130px_150px]" key={site.id}>
+                <div className="min-w-0">
+                  <p className="font-semibold text-fg">{site.name}</p>
+                  <p className="truncate text-sm text-muted">{site.url}</p>
+                </div>
+                <p className="text-sm text-muted">{siteAnalyses.length} analyses</p>
+                <Button onClick={() => navigate("/analysis")} size="sm" variant="secondary">
+                  View scans
+                </Button>
               </div>
-              <p className="text-sm text-zinc-600">{siteAnalyses.length} analyses</p>
-              <button className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-teal-500" onClick={() => navigate("/analysis")} type="button">
-                View scans
-              </button>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -137,21 +139,27 @@ function TeamPanel({
   submitInvite: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <div className="rounded-md border border-zinc-300 bg-white p-5">
-      <h2 className="text-xl font-semibold">Team</h2>
+    <div className="rounded-xl border border-line bg-surface p-6 shadow-card">
+      <h2 className="text-xl font-semibold text-fg">Team</h2>
       <form className="mt-4 flex gap-2" onSubmit={submitInvite}>
-        <input className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" onChange={(event) => setInviteEmail(event.target.value)} placeholder="teammate@example.com" type="email" value={inviteEmail} />
-        <button className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-700" type="submit">
+        <input
+          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+          onChange={(event) => setInviteEmail(event.target.value)}
+          placeholder="teammate@example.com"
+          type="email"
+          value={inviteEmail}
+        />
+        <Button size="sm" type="submit" variant="secondary">
           Invite
-        </button>
+        </Button>
       </form>
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 space-y-2">
         {members.map((member) => (
-          <div className="flex items-center justify-between gap-3 rounded-md bg-zinc-50 px-3 py-2" key={member.id}>
-            <span className="truncate text-sm">{member.email}</span>
-            <span className="rounded bg-white px-2 py-1 text-xs font-semibold text-zinc-600">
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-elevated px-3 py-2" key={member.id}>
+            <span className="truncate text-sm text-fg">{member.email}</span>
+            <Badge size="sm" tone={member.role === "Pending" ? "warn" : "neutral"}>
               {member.role}
-            </span>
+            </Badge>
           </div>
         ))}
       </div>
