@@ -22,22 +22,28 @@ export function FindingDetailsPanel({
   setResolutionReason,
 }: FindingDetailsPanelProps) {
   return (
-    <div className="rounded-md border border-zinc-300 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
         <div>
-          <p className="font-mono text-sm text-zinc-500">{finding.id}</p>
-          <h3 className="mt-1 text-xl font-semibold">{finding.title}</h3>
+          <p className="font-mono text-xs font-medium uppercase tracking-wide text-zinc-500">
+            {finding.id}
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+            {finding.title}
+          </h3>
         </div>
         <span
-          className={`rounded border px-3 py-1.5 text-sm font-semibold ${severityStyles[finding.severity]}`}
+          className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${severityStyles[finding.severity]}`}
         >
           {finding.severity}
         </span>
       </div>
 
-      <div className="mt-5 grid gap-4">
-        <FindingDetail label="Status" value={finding.status} />
-        <div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-md bg-zinc-50 p-3">
+          <FindingDetail label="Status" value={finding.status} />
+        </div>
+        <div className="rounded-md bg-zinc-50 p-3">
           <p className="text-xs font-semibold uppercase text-zinc-500">Scan category</p>
           <span
             className={`mt-1 inline-flex rounded border px-2 py-1 text-sm font-semibold ${scanCategoryStyles[finding.check]}`}
@@ -45,13 +51,23 @@ export function FindingDetailsPanel({
             {finding.checkLabel}
           </span>
         </div>
-        <FindingDetail
-          label="Affected URL, file, route, or endpoint"
-          value={finding.affected}
-        />
-        <FindingDetail label="What happened" value={finding.summary} />
-        <FindingDetail label="Potential impact" value={finding.impact} />
-        {finding.reason && <FindingDetail label="Reason" value={finding.reason} />}
+        <div className="rounded-md bg-zinc-50 p-3 lg:col-span-2">
+          <FindingDetail
+            label="Affected URL, file, route, or endpoint"
+            value={finding.affected}
+          />
+        </div>
+        <div className="rounded-md border border-zinc-200 p-4 lg:col-span-2">
+          <FindingDetail label="What happened" value={finding.summary} />
+        </div>
+        <div className="rounded-md border border-zinc-200 p-4 lg:col-span-2">
+          <FindingDetail label="Potential impact" value={finding.impact} />
+        </div>
+        {finding.reason && (
+          <div className="rounded-md border border-zinc-200 p-4 lg:col-span-2">
+            <FindingDetail label="Reason" value={finding.reason} />
+          </div>
+        )}
       </div>
 
       <label className="mt-5 block">
