@@ -34,10 +34,18 @@ spec:
               ollama serve &
               until ollama list >/dev/null 2>&1; do sleep 1; done
               ollama pull "llama3.2:3b"
+              # Prewarm: load the model into memory now so the first user request
+              # doesn't pay the CPU cold-start cost (~40s). OLLAMA_KEEP_ALIVE=-1
+              # (below) keeps it resident instead of unloading after idle.
+              echo "Prewarming llama3.2:3b into memory..."
+              ollama run "llama3.2:3b" "ok" >/dev/null 2>&1 || true
+              echo "Prewarm complete; llama3.2:3b is resident."
               wait
           env:
             - name: OLLAMA_HOST
               value: "0.0.0.0:11434"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "-1"
             - name: HOME
               value: /home/ollama
           ports:

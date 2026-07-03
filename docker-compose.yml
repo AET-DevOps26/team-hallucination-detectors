@@ -54,15 +54,26 @@ services:
   # On first boot it pulls the configured model, then serves the OpenAI-compatible
   # API on :11434. Weights are cached in the ollama_models volume so restarts are
   # fast. CPU-only inference is slow — keep to small models (1B–3B).
+  #
+  # Prewarm: after the pull we fire a throwaway generation so the model is loaded
+  # into RAM at container start (a CPU cold start is ~40s and otherwise lands on
+  # the first user request). OLLAMA_KEEP_ALIVE=-1 keeps it resident indefinitely
+  # instead of unloading it after the default 5m idle window.
   ollama:
     image: ollama/ollama:latest
     container_name: vibeshield-ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         ollama serve &
         until ollama list >/dev/null 2>&1; do sleep 1; done
-        ollama pull "${SELFHOSTED_MODEL_NAME:-llama3.2:3b}"
+        MODEL="${SELFHOSTED_MODEL_NAME:-llama3.2:3b}"
+        ollama pull "$MODEL"
+        echo "Prewarming $MODEL into memory..."
+        ollama run "$MODEL" "ok" >/dev/null 2>&1 || true
+        echo "Prewarm complete; $MODEL is resident."
         wait
     expose:
       - "11434"
