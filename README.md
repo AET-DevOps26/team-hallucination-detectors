@@ -154,8 +154,8 @@ Helm charts are in `helm/vibeshield/`. Kubernetes manifests for monitoring are i
 
 | Student | Area |
 |---|---|
-| Aziz Chouria | DevOps: CI/CD pipelines, Kubernetes deployment, monitoring stack (Prometheus + Grafana + Loki), security hardening, Helm charts |
-| Julian Jungnitz | Backend: auth-service, API design (OpenAPI contract), GenAI integration (langchain-service), UML diagrams |
-| *(add teammates)* | *(add areas)* |
+| Aziz Chouria | *(TBD)* |
+| Julian Jungnitz | *(TBD)* |
+| Tim Dreher | *(TBD)* |
 
-> Fill in the full team before the July 17th deadline — per-student responsibilities are an automatic-fail-adjacent deliverable per the course brief.
+> Fill in areas before the July 17th deadline — per-student responsibilities are an automatic-fail-adjacent deliverable per the course brief.
