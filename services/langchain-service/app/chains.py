@@ -6,9 +6,14 @@ from langchain_openai import ChatOpenAI
 from app.settings import settings
 
 
-# The LLM backends VibeShield can talk to. Both are OpenAI-compatible, so they
-# differ only by base URL, API key, and model name.
-Provider = Literal["openai", "logos"]
+# The LLM backends VibeShield can talk to. All are OpenAI-compatible, so they
+# differ only by base URL, API key, and model name:
+# - "openai":     OpenAI's own API.
+# - "logos":      the TUM Logos gateway provided by the course.
+# - "selfhosted": a self-hosted model we run ourselves (Ollama), reached in-cluster
+#                 at http://ollama:11434/v1. Ollama ignores the API key, but a
+#                 non-empty dummy is still required by the OpenAI client.
+Provider = Literal["openai", "logos", "selfhosted"]
 
 
 class ProviderNotConfigured(Exception):
@@ -26,6 +31,12 @@ def _provider_config(provider: Provider) -> tuple[str, str, str]:
             settings.logos_api_key,
             settings.logos_base_url,
             settings.logos_model_name,
+        )
+    if provider == "selfhosted":
+        return (
+            settings.selfhosted_api_key,
+            settings.selfhosted_base_url,
+            settings.selfhosted_model_name,
         )
     return settings.openai_api_key, settings.openai_base_url, settings.model_name
 

@@ -17,7 +17,9 @@ export type FixPromptInput = Pick<
 /**
  * Asks the GenAI service to turn one finding into a single prompt the user can
  * paste straight into their AI builder. LLM generation routinely outruns the
- * default 5s client timeout, so we widen it just for this call.
+ * default 5s client timeout, so we widen it just for this call. The self-hosted
+ * (Ollama) provider can take tens of seconds on a CPU-only cold start, so the
+ * ceiling is generous.
  */
 export async function generateFixPrompt(
   finding: FixPromptInput,
@@ -36,7 +38,7 @@ export async function generateFixPrompt(
       builder,
       provider,
     },
-    { timeout: 30000 },
+    { timeout: 120000 },
   );
 
   return data.prompt;

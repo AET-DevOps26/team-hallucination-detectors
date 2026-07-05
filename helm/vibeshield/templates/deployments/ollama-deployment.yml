@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        # PVC must be writable by the non-root user so Ollama can store weights.
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          # Serve the OpenAI-compatible API, then pull the model on first boot
+          # (cached on the PVC thereafter) and prewarm it into memory so the first
+          # user request doesn't pay the CPU cold-start cost (~40s). The server is
+          # reachable before the pull/prewarm finish.
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ollama serve &
+              until ollama list >/dev/null 2>&1; do sleep 1; done
+              ollama pull "{{ .Values.ollama.model }}"
+              echo "Prewarming {{ .Values.ollama.model }} into memory..."
+              ollama run "{{ .Values.ollama.model }}" "ok" >/dev/null 2>&1 || true
+              echo "Prewarm complete; {{ .Values.ollama.model }} is resident."
+              wait
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+            # Keep the model resident indefinitely instead of unloading after idle.
+            - name: OLLAMA_KEEP_ALIVE
+              value: "-1"
+            # Ollama stores models and keys under $HOME/.ollama; point HOME at the PVC.
+            - name: HOME
+              value: /home/ollama
+          ports:
+            - containerPort: 11434
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /home/ollama
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 6
+      volumes:
+        - name: ollama-models
+          persistentVolumeClaim:
+            claimName: ollama-models

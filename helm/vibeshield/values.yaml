@@ -14,6 +14,26 @@ langchainService:
   openaiBaseUrl: "https://api.openai.com/v1"
   logosBaseUrl: "https://logos.aet.cit.tum.de/v1"
   logosModelName: "openai/gpt-oss-120b"
+  # Self-hosted provider — points at the in-cluster ollama Service. The key is a
+  # dummy Ollama ignores; blank it to disable the "selfhosted" provider (callers
+  # then get 503 PROVIDER_NOT_CONFIGURED).
+  selfhostedApiKey: "ollama"
+  selfhostedBaseUrl: "http://ollama:11434/v1"
+  selfhostedModelName: "llama3.2:3b"
+
+# In-cluster self-hosted LLM runtime (Ollama). CPU-only on the course cluster,
+# so keep to a small model. Weights persist on a PVC across restarts.
+ollama:
+  image: "ollama/ollama:latest"
+  model: "llama3.2:3b"
+  storage: 8Gi
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
 
 database:
   name: vibeshield

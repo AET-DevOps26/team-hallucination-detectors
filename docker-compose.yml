@@ -42,6 +42,8 @@ services:
     build:
       context: ./services/langchain-service
     container_name: vibeshield-langchain
+    depends_on:
+      - ollama
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -49,11 +51,44 @@ services:
       LOGOS_API_KEY: ${LOGOS_API_KEY:-}
       LOGOS_BASE_URL: ${LOGOS_BASE_URL:-https://logos.aet.cit.tum.de/v1}
       LOGOS_MODEL_NAME: ${LOGOS_MODEL_NAME:-openai/gpt-oss-120b}
+      SELFHOSTED_API_KEY: ${SELFHOSTED_API_KEY:-ollama}
+      SELFHOSTED_BASE_URL: ${SELFHOSTED_BASE_URL:-http://ollama:11434/v1}
+      SELFHOSTED_MODEL_NAME: ${SELFHOSTED_MODEL_NAME:-llama3.2:3b}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
       interval: 10s
       timeout: 3s
       retries: 10
+
+  # Self-hosted, OpenAI-compatible LLM runtime for the "selfhosted" provider.
+  # On first boot it pulls the configured model, then serves the OpenAI-compatible
+  # API on :11434. Weights are cached in the ollama_models volume so restarts are
+  # fast. CPU-only inference is slow — keep to small models (1B–3B).
+  #
+  # Prewarm: after the pull we fire a throwaway generation so the model is loaded
+  # into RAM at container start (a CPU cold start is ~40s and otherwise lands on
+  # the first user request). OLLAMA_KEEP_ALIVE=-1 keeps it resident indefinitely
+  # instead of unloading it after the default 5m idle window.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vibeshield-ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        MODEL="${SELFHOSTED_MODEL_NAME:-llama3.2:3b}"
+        ollama pull "$$MODEL"
+        echo "Prewarming $$MODEL into memory..."
+        ollama run "$$MODEL" "ok" >/dev/null 2>&1 || true
+        echo "Prewarm complete; $$MODEL is resident."
+        wait
+    expose:
+      - "11434"
+    volumes:
+      - ollama_models:/root/.ollama
 
   client:
     build:
@@ -100,3 +135,4 @@ services:
       - postgres_data:/var/lib/postgresql/data
 volumes:
     postgres_data:
+    ollama_models:
