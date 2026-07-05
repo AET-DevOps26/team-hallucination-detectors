@@ -42,8 +42,6 @@ services:
     build:
       context: ./services/langchain-service
     container_name: vibeshield-langchain
-    depends_on:
-      - ollama
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -70,6 +68,7 @@ services:
   # the first user request). OLLAMA_KEEP_ALIVE=-1 keeps it resident indefinitely
   # instead of unloading it after the default 5m idle window.
   ollama:
+    profiles: [ollama]
     image: ollama/ollama:latest
     container_name: vibeshield-ollama
     environment:
