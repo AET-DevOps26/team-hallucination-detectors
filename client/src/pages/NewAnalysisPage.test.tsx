@@ -14,6 +14,10 @@ const baseProps = {
   sites: [],
 };
 
+function openAdvancedOptions() {
+  fireEvent.click(screen.getByRole("button", { name: /advanced options/i }));
+}
+
 describe("NewAnalysisPage", () => {
   it("renders the form with Start analysis button", () => {
     render(<NewAnalysisPage {...baseProps} />);
@@ -23,7 +27,7 @@ describe("NewAnalysisPage", () => {
 
   it("shows validation error for invalid URL", async () => {
     render(<NewAnalysisPage {...baseProps} />);
-    const input = screen.getByPlaceholderText("https://example.com");
+    const input = screen.getByLabelText("Website URL");
     fireEvent.change(input, { target: { value: "not-a-url" } });
     fireEvent.submit(input.closest("form")!);
     await waitFor(() =>
@@ -34,7 +38,7 @@ describe("NewAnalysisPage", () => {
 
   it("shows validation error for non-http protocol", async () => {
     render(<NewAnalysisPage {...baseProps} />);
-    const input = screen.getByPlaceholderText("https://example.com");
+    const input = screen.getByLabelText("Website URL");
     fireEvent.change(input, { target: { value: "ftp://example.com" } });
     fireEvent.submit(input.closest("form")!);
     await waitFor(() =>
@@ -42,12 +46,13 @@ describe("NewAnalysisPage", () => {
     );
   });
 
-  it("shows validation error when no scans selected", async () => {
+  it("shows validation error when advanced options are open and no scans selected", async () => {
     render(<NewAnalysisPage {...baseProps} />);
-    const input = screen.getByPlaceholderText("https://example.com");
+    const input = screen.getByLabelText("Website URL");
     fireEvent.change(input, { target: { value: "https://example.com" } });
 
-    // Uncheck all default scans
+    // Scan selection lives behind the advanced-options panel.
+    openAdvancedOptions();
     screen.getAllByRole("checkbox").forEach((cb) => {
       if ((cb as HTMLInputElement).checked) fireEvent.click(cb);
     });
@@ -61,19 +66,36 @@ describe("NewAnalysisPage", () => {
   it("calls createAnalysis with correct input on valid submit", async () => {
     const create = vi.fn().mockResolvedValue(undefined);
     render(<NewAnalysisPage {...baseProps} createAnalysis={create} />);
-    const input = screen.getByPlaceholderText("https://example.com");
+    const input = screen.getByLabelText("Website URL");
     fireEvent.change(input, { target: { value: "https://example.com/" } });
     fireEvent.submit(input.closest("form")!);
     await waitFor(() => expect(create).toHaveBeenCalled());
     const call = create.mock.calls[0][0];
     expect(call.url).toBe("https://example.com"); // trailing slash stripped
-    expect(call.selectedScans.length).toBeGreaterThan(0);
+    expect(call.selectedScans.length).toBeGreaterThan(0); // defaults applied
+  });
+
+  it("passes advanced overrides through when advanced options are open", async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(<NewAnalysisPage {...baseProps} createAnalysis={create} />);
+    const input = screen.getByLabelText("Website URL");
+    fireEvent.change(input, { target: { value: "https://example.com" } });
+
+    openAdvancedOptions();
+    // Leave one scan selected; toggle the "Include subdomains" scope option.
+    const subdomains = screen.getByLabelText("Include subdomains");
+    fireEvent.click(subdomains);
+
+    fireEvent.submit(input.closest("form")!);
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    const call = create.mock.calls[0][0];
+    expect(call.includeSubdomains).toBe(true);
   });
 
   it("surfaces backend error on failed submit", async () => {
     const create = vi.fn().mockRejectedValue(new Error("A scan is already running."));
     render(<NewAnalysisPage {...baseProps} createAnalysis={create} />);
-    const input = screen.getByPlaceholderText("https://example.com");
+    const input = screen.getByLabelText("Website URL");
     fireEvent.change(input, { target: { value: "https://example.com" } });
     fireEvent.submit(input.closest("form")!);
     await waitFor(() =>
@@ -90,14 +112,7 @@ describe("NewAnalysisPage", () => {
 
   it("pre-fills URL from first known site", () => {
     render(<NewAnalysisPage {...baseProps} sites={[site]} />);
-    const input = screen.getByPlaceholderText("https://example.com") as HTMLInputElement;
+    const input = screen.getByLabelText("Website URL") as HTMLInputElement;
     expect(input.value).toBe("https://shop.example.org");
-  });
-
-  it("shows selected scope panel reflecting current URL", () => {
-    render(<NewAnalysisPage {...baseProps} />);
-    const input = screen.getByPlaceholderText("https://example.com");
-    fireEvent.change(input, { target: { value: "https://mysite.com" } });
-    expect(screen.getByText("https://mysite.com")).toBeInTheDocument();
   });
 });

@@ -17,10 +17,10 @@ export function TextField({
 }: TextFieldProps) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-zinc-700">{label}</span>
+      <span className="text-sm font-medium text-muted">{label}</span>
       <input
         autoComplete={autoComplete}
-        className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-3 text-base outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        className="mt-2 w-full rounded-lg border border-line bg-surface px-3 py-3 text-base text-fg outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
         onChange={(event) => onChange(event.target.value)}
         required={required}
         type={type}
