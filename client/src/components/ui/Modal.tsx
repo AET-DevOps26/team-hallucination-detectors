@@ -22,6 +22,12 @@ export function Modal({
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // Kept in a ref so the setup effect only depends on `open`, not on the
+  // caller's (often inline, identity-changing-every-render) onClose — otherwise
+  // the effect re-runs on every keystroke inside the modal and steals focus
+  // back to the first focusable element.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -31,7 +37,7 @@ export function Modal({
     document.body.style.overflow = "hidden";
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
 
@@ -46,7 +52,7 @@ export function Modal({
       document.body.style.overflow = overflow;
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
