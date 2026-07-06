@@ -16,8 +16,7 @@ import java.nio.charset.StandardCharsets;
  * them against the shared signing secret and extracts the caller's identity.
  *
  * <p>The shared-secret (symmetric) scheme is the documented MVP seam — see
- * {@code docs/auth.md}. A later switch to asymmetric keys or Keycloak only has to
- * replace this class.
+ * {@code docs/auth.md}. A later switch to asymmetric keys only has to replace this class.
  */
 @Service
 public class JwtService {

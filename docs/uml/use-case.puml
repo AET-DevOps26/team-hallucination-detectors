@@ -4,7 +4,7 @@
 '  Scope: ONLY capabilities implemented on `main` (verified 2026-06-28).
 '  Deferred features (code/repo scanning, active OWASP probing,
 '  self-hosted/local LLM) are intentionally NOT shown.
-'  Auth is the self-contained JWT auth-service - NOT Keycloak (docs/auth.md).
+'  Auth is the self-contained JWT auth-service (docs/auth.md).
 ' =====================================================================
 
 left to right direction
