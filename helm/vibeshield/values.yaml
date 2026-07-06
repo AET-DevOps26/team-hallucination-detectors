@@ -49,4 +49,4 @@ secrets:
   logosApiKey: ""
 
 autoscaling:
-  enabled: false
+  enabled: true
