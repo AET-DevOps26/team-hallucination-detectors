@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
   name: api-service
 spec:
-  replicas: 1
+  # replicas is intentionally unset — the HorizontalPodAutoscaler (k8s/hpa.yml)
+  # owns the replica count. Setting it here would fight the HPA on every apply.
   selector:
     matchLabels:
       app: api-service
