@@ -56,7 +56,6 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
           token: response.token,
         });
         setPassword("");
-        navigate("/analysis");
       } else if (authMode === "register") {
         await registerUser(email, password);
         setAuthMessage("Registration successful. You can now log in.");

@@ -39,6 +39,8 @@ export default function App() {
   const toastRef = useRef(toast);
   toastRef.current = toast;
   const prevSession = useRef(auth.session);
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   const isAuthenticated = Boolean(auth.session);
 
@@ -61,11 +63,14 @@ export default function App() {
     setAuthModalOpen(true);
   }
 
-  // Auto-resume a gated scan the moment the user logs in.
+  // Auto-resume a gated scan the moment the user logs in, or navigate to
+  // /analysis when logging in without a pending scan (e.g. from the login page).
   useEffect(() => {
     const justLoggedIn = !prevSession.current && Boolean(auth.session);
     prevSession.current = auth.session;
-    if (justLoggedIn && pendingScan.current) {
+    if (!justLoggedIn) return;
+
+    if (pendingScan.current) {
       const input = pendingScan.current;
       pendingScan.current = null;
       setAuthModalOpen(false);
@@ -75,6 +80,8 @@ export default function App() {
           "error",
         );
       });
+    } else {
+      routerRef.current.navigate("/analysis");
     }
   }, [auth.session]);
 

@@ -177,10 +177,10 @@ function AdvancedOptions({
   toggleScan: (scan: ScanOption) => void;
 }) {
   return (
-    <div className="border-t border-line/60">
+    <div className="border-t border-gray-200">
       <button
         aria-expanded={open}
-        className="flex w-full items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-muted transition hover:text-primary"
+        className="flex w-full items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-gray-500 transition hover:text-teal-600"
         onClick={() => setOpen(!open)}
         type="button"
       >
