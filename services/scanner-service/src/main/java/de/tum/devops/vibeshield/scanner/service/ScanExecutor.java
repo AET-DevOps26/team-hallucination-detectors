@@ -18,8 +18,8 @@ import java.util.List;
 
 /**
  * Runs the implemented checks against one target and assembles the contract result.
- * Unimplemented check types (crawl, adminPaths, secrets — post-MVP) are skipped and
- * the result's {@code executedChecks} makes that visible instead of silently lying.
+ * Unimplemented check types (adminPaths, secrets — post-MVP) are skipped and the
+ * result's {@code executedChecks} makes that visible instead of silently lying.
  */
 @Service
 public class ScanExecutor {
@@ -28,10 +28,13 @@ public class ScanExecutor {
 
     private final List<SecurityCheck> checks;
     private final FetcherFactory fetcherFactory;
+    private final PageDiscovery pageDiscovery;
 
-    public ScanExecutor(List<SecurityCheck> checks, FetcherFactory fetcherFactory) {
+    public ScanExecutor(List<SecurityCheck> checks, FetcherFactory fetcherFactory,
+                        PageDiscovery pageDiscovery) {
         this.checks = checks;
         this.fetcherFactory = fetcherFactory;
+        this.pageDiscovery = pageDiscovery;
     }
 
     public ScanExecutionResult execute(ScanExecutionRequest request) {
@@ -51,8 +54,21 @@ public class ScanExecutor {
             return failed(blocked.getMessage());
         }
 
-        List<ScannerFinding> findings = new ArrayList<>();
         List<ScanCheck> executed = new ArrayList<>();
+        List<URI> pages = List.of(target);
+        if (request.getChecks().contains(ScanCheck.CRAWL)) {
+            // crawlDepth 0 (the contract default) means "scan only the start URL" —
+            // honor that literally rather than discovering pages nobody asked for.
+            // Any depth >= 1 currently gets the same one-hop discovery; true
+            // multi-hop crawling (depth 2/3) is not yet implemented.
+            int crawlDepth = request.getCrawlDepth() == null ? 0 : request.getCrawlDepth();
+            if (crawlDepth >= 1) {
+                pages = pageDiscovery.discover(target, fetcher);
+            }
+            executed.add(ScanCheck.CRAWL);
+        }
+
+        List<ScannerFinding> findings = new ArrayList<>();
         for (SecurityCheck check : checks) {
             if (!request.getChecks().contains(check.type())) {
                 continue;
@@ -72,7 +88,7 @@ public class ScanExecutor {
         return new ScanExecutionResult()
                 .status(ScanExecutionResult.StatusEnum.COMPLETED)
                 .executedChecks(executed)
-                .pages(List.of(target))
+                .pages(pages)
                 .findings(findings);
     }
 
