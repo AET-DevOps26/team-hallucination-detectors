@@ -134,6 +134,10 @@ jobs:
           kubectl apply -f k8s/monitoring/loki-service.yml
           kubectl apply -f k8s/monitoring/promtail-configmap.yml
           kubectl apply -f k8s/monitoring/promtail-daemonset.yml
+          kubectl apply -f k8s/monitoring/tempo-configmap.yml
+          kubectl apply -f k8s/monitoring/tempo-pvc.yml
+          kubectl apply -f k8s/monitoring/tempo-deployment.yml
+          kubectl apply -f k8s/monitoring/tempo-service.yml
           kubectl apply -f k8s/monitoring/grafana-secret.yml
           kubectl apply -f k8s/monitoring/grafana-configmap.yml
           kubectl apply -f k8s/monitoring/grafana-dashboard-configmap.yml
@@ -141,4 +145,4 @@ jobs:
           kubectl apply -f k8s/monitoring/grafana-deployment.yml
           kubectl apply -f k8s/monitoring/grafana-service.yml
           kubectl apply -f k8s/monitoring/grafana-ingress.yml
-          kubectl get pods -n ge65poj -l 'app in (prometheus,grafana,loki)'
+          kubectl get pods -n ge65poj -l 'app in (prometheus,grafana,loki,tempo)'

@@ -9,6 +9,12 @@ services:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
       APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me-minimum-32-chars-required}
+      OTEL_SERVICE_NAME: api-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -23,6 +29,12 @@ services:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
       APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me-minimum-32-chars-required}
+      OTEL_SERVICE_NAME: auth-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -35,6 +47,13 @@ services:
     container_name: vibeshield-scanner
     # Internal-only: reached by the api-service as http://scanner-service:8080.
     # Deliberately no published ports and no gateway route.
+    environment:
+      OTEL_SERVICE_NAME: scanner-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
     expose:
       - "8080"
 
@@ -52,6 +71,12 @@ services:
       SELFHOSTED_API_KEY: ${SELFHOSTED_API_KEY:-ollama}
       SELFHOSTED_BASE_URL: ${SELFHOSTED_BASE_URL:-http://ollama:11434/v1}
       SELFHOSTED_MODEL_NAME: ${SELFHOSTED_MODEL_NAME:-llama3.2:3b}
+      OTEL_SERVICE_NAME: langchain-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
       interval: 10s
