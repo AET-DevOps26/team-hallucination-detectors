@@ -165,7 +165,7 @@ components:
     ScanCheck:
       type: string
       description: Keep in sync with ScanCheck in openapi.yaml.
-      enum: [crawl, https, headers, adminPaths, secrets, sensitiveFiles]
+      enum: [crawl, https, headers, adminPaths, secrets, sensitiveFiles, cors]
 
     Severity:
       type: string
