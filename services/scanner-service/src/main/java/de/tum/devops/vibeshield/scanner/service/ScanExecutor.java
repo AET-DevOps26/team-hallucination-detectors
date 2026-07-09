@@ -18,8 +18,8 @@ import java.util.List;
 
 /**
  * Runs the implemented checks against one target and assembles the contract result.
- * Unimplemented check types (crawl, adminPaths, secrets — post-MVP) are skipped and
- * the result's {@code executedChecks} makes that visible instead of silently lying.
+ * Unimplemented check types (crawl, secrets — post-MVP) are skipped and the
+ * result's {@code executedChecks} makes that visible instead of silently lying.
  */
 @Service
 public class ScanExecutor {
