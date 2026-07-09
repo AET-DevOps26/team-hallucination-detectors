@@ -32,7 +32,9 @@ public enum ScanCheck {
   
   SECRETS("secrets"),
   
-  SENSITIVE_FILES("sensitiveFiles");
+  SENSITIVE_FILES("sensitiveFiles"),
+  
+  COOKIES("cookies");
 
   private final String value;
 
