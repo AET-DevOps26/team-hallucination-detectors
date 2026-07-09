@@ -21,7 +21,11 @@ spec:
           type: RuntimeDefault
       containers:
         - name: database
-          image: postgres:16
+          # pgvector/pgvector:pg16 is the official postgres:16 image with the
+          # `vector` extension compiled in - same major version, same on-disk
+          # format, so this is a safe drop-in swap of the previous postgres:16
+          # image (existing data on the postgres-data PVC is unaffected).
+          image: pgvector/pgvector:pg16
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

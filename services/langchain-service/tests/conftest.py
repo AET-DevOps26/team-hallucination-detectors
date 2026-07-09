@@ -17,8 +17,19 @@ def _reset_provider_keys(monkeypatch):
     """
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(settings, "logos_api_key", "")
+    monkeypatch.setattr(settings, "database_url", "")
+    monkeypatch.setattr(settings, "embedding_api_key", "")
     _chat_chain.cache_clear()
     _fix_prompt_chain.cache_clear()
+
+
+@pytest.fixture
+def anyio_backend():
+    # async def tests (e.g. tests/test_retrieval.py) only need the asyncio
+    # backend; anyio ships its pytest plugin automatically once installed
+    # (already a transitive dependency via fastapi/httpx), so no extra
+    # test-only package is needed.
+    return "asyncio"
 
 
 @pytest.fixture

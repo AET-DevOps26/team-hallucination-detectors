@@ -42,6 +42,8 @@ services:
     build:
       context: ./services/langchain-service
     container_name: vibeshield-langchain
+    depends_on:
+      - database
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -52,6 +54,13 @@ services:
       SELFHOSTED_API_KEY: ${SELFHOSTED_API_KEY:-ollama}
       SELFHOSTED_BASE_URL: ${SELFHOSTED_BASE_URL:-http://ollama:11434/v1}
       SELFHOSTED_MODEL_NAME: ${SELFHOSTED_MODEL_NAME:-llama3.2:3b}
+      # RAG knowledge base (app/db.py, app/retrieval.py). Empty DATABASE_URL
+      # or EMBEDDING_API_KEY disables retrieval; it's additive grounding, not
+      # a hard dependency for the rest of the service to run.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://vibeshield:${POSTGRES_PASSWORD}@database:5432/vibeshield}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
       interval: 10s
@@ -122,7 +131,11 @@ services:
       langchain-service:
         condition: service_healthy
   database:
-    image: postgres:16
+    # pgvector/pgvector:pg16 is the official postgres:16 image with the
+    # `vector` extension compiled in - same major version, same on-disk
+    # format, so this is a safe drop-in swap of the previous postgres:16
+    # image (existing data in the postgres_data volume is unaffected).
+    image: pgvector/pgvector:pg16
     container_name: vibeshield-db
     environment:
       POSTGRES_DB: vibeshield

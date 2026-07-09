@@ -57,6 +57,18 @@ spec:
               value: "llama3.2:3b"
             - name: SELFHOSTED_API_KEY
               value: "ollama"
+            # RAG knowledge base (app/db.py, app/retrieval.py). Own schema in
+            # the shared vibeshield Postgres (see app/db.py SCHEMA_NAME); no
+            # DATABASE_URL means retrieval stays disabled (additive grounding,
+            # not a hard dependency). EMBEDDING_API_KEY isn't set here on
+            # purpose: it falls back to OPENAI_API_KEY above when unset.
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://vibeshield:$(POSTGRES_PASSWORD)@database:5432/vibeshield"
           resources:
             limits:
               memory: "1Gi"
