@@ -27,12 +27,18 @@ Browser → Nginx gateway → React client (Vite + TypeScript)
 
 | Service | Tech | Port | Responsibility |
 |---|---|---|---|
-| client | React + Vite + TypeScript, Nginx | 3000 | User-facing UI |
-| api-service | Spring Boot 3, Java 21 | 8080 | REST API, scan orchestration, JWT validation |
-| auth-service | Spring Boot 3, Java 21 | 8080 | Registration, login, password reset, JWT issuance |
-| scanner-service | Spring Boot 3, Java 21 | 8080 | Website crawling and security checks |
-| langchain-service | Python 3.12, FastAPI, LangChain | 8000 | AI fix-prompt generation (cloud + local model) |
+| [client](docs/client.md) | React + Vite + TypeScript, Nginx | 3000 | User-facing UI |
+| [api-service](docs/api.md) | Spring Boot 3, Java 21 | 8080 | REST API, scan orchestration, JWT validation |
+| [auth-service](docs/auth.md) | Spring Boot 3, Java 21 | 8080 | Registration, login, password reset, JWT issuance |
+| [scanner-service](docs/scanner.md) | Spring Boot 3, Java 21 | 8080 | Security checks (internal-only) |
+| [langchain-service](docs/langchain.md) | Python 3.12, FastAPI, LangChain | 8000 | AI fix-prompt generation (OpenAI cloud + self-hosted Ollama local model + TUM Logos) |
+| [gateway](docs/gateway.md) | Nginx | 80 / 443 | Single-origin reverse proxy in front of all services |
 | database | PostgreSQL 16 | 5432 | Persistent storage (schema-per-service isolation) |
+
+> Per-service reference docs live in [`docs/`](docs/): [client](docs/client.md) ·
+> [api-service](docs/api.md) · [auth-service](docs/auth.md) ·
+> [scanner-service](docs/scanner.md) · [langchain-service](docs/langchain.md) ·
+> [gateway](docs/gateway.md).
 
 ---
 

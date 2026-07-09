@@ -46,7 +46,7 @@ describe("generateFixPrompt", () => {
       builder: "Generic",
       provider: "logos",
     });
-    expect(seenConfig.timeout).toBe(30000);
+    expect(seenConfig.timeout).toBe(120000);
     expect(prompt).toBe("Fix it like this.");
   });
 

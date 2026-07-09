@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
   name: langchain-service
 spec:
-  replicas: 1
+  # replicas is intentionally unset — the HorizontalPodAutoscaler (k8s/hpa.yml)
+  # owns the replica count. Setting it here would fight the HPA on every apply.
   selector:
     matchLabels:
       app: langchain-service
@@ -50,6 +51,12 @@ spec:
                   name: vibeshield-secrets
                   key: LOGOS_API_KEY
                   optional: true
+            - name: SELFHOSTED_BASE_URL
+              value: "http://ollama:11434/v1"
+            - name: SELFHOSTED_MODEL_NAME
+              value: "llama3.2:3b"
+            - name: SELFHOSTED_API_KEY
+              value: "ollama"
           resources:
             limits:
               memory: "1Gi"
@@ -57,6 +64,13 @@ spec:
             requests:
               memory: "512Mi"
               cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health

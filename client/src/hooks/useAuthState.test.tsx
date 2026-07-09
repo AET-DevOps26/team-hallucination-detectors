@@ -65,7 +65,7 @@ describe("useAuthState", () => {
     expect(window.localStorage.getItem(sessionStorageKey)).toBeNull();
   });
 
-  it("logs in, persists the session, clears the password, and navigates to /profile", async () => {
+  it("logs in, persists the session, and clears the password", async () => {
     client.loginUser.mockResolvedValue({ token: "new-token", email: "dev@example.org" });
     const { result } = render();
 
@@ -82,7 +82,6 @@ describe("useAuthState", () => {
       token: "new-token",
     });
     expect(result.current.password).toBe("");
-    expect(navigate).toHaveBeenCalledWith("/profile");
     expect(JSON.parse(window.localStorage.getItem(sessionStorageKey)!)).toEqual(
       result.current.session,
     );

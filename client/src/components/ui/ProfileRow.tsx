@@ -5,9 +5,9 @@ type ProfileRowProps = {
 
 export function ProfileRow({ label, value }: ProfileRowProps) {
   return (
-    <div className="min-w-0 rounded-md bg-zinc-50 p-3">
-      <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-1 truncate font-semibold">{value}</p>
+    <div className="min-w-0 rounded-lg bg-elevated p-3">
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-1 truncate font-semibold text-fg">{value}</p>
     </div>
   );
 }

@@ -40,7 +40,6 @@ export function useAnalysisState({
   const [scans, setScans] = useState<ApiScan[]>([]);
   const [findingsByScan, setFindingsByScan] = useState<Record<string, Finding[]>>({});
   const [selectedFindingId, setSelectedFindingId] = useState("");
-  const [resolutionReason, setResolutionReason] = useState("");
   // Scan configuration (selected checks, depth) is not part of the scan read
   // model yet, so it is remembered only for scans created in this session.
   const scanConfigs = useRef(new Map<string, NewAnalysisInput>());
@@ -167,16 +166,9 @@ export function useAnalysisState({
     setFindingsByScan((current) => ({
       ...current,
       [analysisId]: (current[analysisId] ?? []).map((finding) =>
-        finding.id === findingId
-          ? {
-              ...finding,
-              status,
-              reason: status === "Open" ? undefined : resolutionReason || undefined,
-            }
-          : finding,
+        finding.id === findingId ? { ...finding, status } : finding,
       ),
     }));
-    setResolutionReason("");
   }
 
   const websitesById = useMemo(
@@ -208,9 +200,7 @@ export function useAnalysisState({
     currentAnalysis,
     currentAnalysisId,
     rescanAnalysis,
-    resolutionReason,
     selectedFindingId,
-    setResolutionReason,
     setSelectedFindingId,
     sites,
     updateFinding,

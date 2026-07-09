@@ -5,9 +5,6 @@ and current-user lookup. It issues HMAC-signed JWTs that other services can vali
 stores users in the shared PostgreSQL database under the service-owned `auth_service`
 schema.
 
-> **Note:** The MVP uses this self-contained JWT service rather than Keycloak. If the team
-> later adopts Keycloak/OIDC, this service is the seam that would be replaced.
-
 ## Stack
 
 | | |

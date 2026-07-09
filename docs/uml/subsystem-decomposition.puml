@@ -7,8 +7,8 @@
 '
 '  Honest caveats (also called out in-diagram):
 '   * Entry point is the nginx gateway / k8s Ingress - NOT the API service.
-'   * Keycloak is PLANNED, not integrated. Real auth = self-contained
-'     Spring Boot auth-service issuing HMAC JWTs (docs/auth.md).
+'   * Real auth = self-contained Spring Boot auth-service issuing HMAC JWTs
+'     (docs/auth.md).
 '   * The GenAI endpoint is a hand-written client, NOT in the OpenAPI spec.
 '   * Scanner-service is stateless (no DB); only api & auth touch Postgres.
 ' =====================================================================
@@ -82,15 +82,5 @@ GENAI --> LLM    : "HTTPS"
 ' Keep the SPA + the two interfaces on one rank in routing order.
 FE -[hidden]right- I_REST
 I_REST -[hidden]right- I_GEN
-
-' ---- PLANNED, NOT INTEGRATED (kept separate so it can't read as "done")
-frame "Planned - NOT in the running system" as PLANNED {
-  component "Keycloak (OIDC)\n«would replace the Auth\nservice's self-contained\nJWT seam - docs/auth.md»" as KC
-}
-' Detail lives in the box above, so the connector carries only a tiny label.
-' Force the frame down onto the SERVICE rank (between Auth and GenAI) so it
-' sits clear of the interface circles' hanging labels one rank up.
-KC -[hidden]right- GENAI
-KC .[#gray,dashed].> AUTH : "replaces"
 
 @enduml

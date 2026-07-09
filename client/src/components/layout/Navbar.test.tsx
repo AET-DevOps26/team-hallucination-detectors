@@ -1,57 +1,75 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { Session } from "../../types/domain";
+import type { ApiState, Session } from "../../types/domain";
 import { Navbar } from "./Navbar";
 
 const session: Session = { username: "dev-user", email: "dev@example.org", token: "tok" };
+const apiState: ApiState = { status: "success", message: "ok" };
+
+function renderNavbar(overrides: Partial<Parameters<typeof Navbar>[0]> = {}) {
+  return render(
+    <Navbar
+      navigate={vi.fn()}
+      onLogout={vi.fn()}
+      route="/login"
+      session={null}
+      theme="light"
+      onToggleTheme={vi.fn()}
+      apiState={apiState}
+      {...overrides}
+    />,
+  );
+}
 
 describe("Navbar", () => {
-  it("shows a Login link and no username/logout when logged out", () => {
-    render(<Navbar navigate={vi.fn()} onLogout={vi.fn()} route="/login" session={null} />);
+  it("shows a Sign in button and no username/logout when logged out", () => {
+    renderNavbar({ session: null });
 
-    expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
   });
 
   it("shows the username and a Log out button when logged in", () => {
-    render(<Navbar navigate={vi.fn()} onLogout={vi.fn()} route="/profile" session={session} />);
+    renderNavbar({ session });
 
-    expect(screen.getByRole("button", { name: "dev-user" })).toBeInTheDocument();
+    expect(screen.getByText("dev-user")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Login" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign in" })).not.toBeInTheDocument();
   });
 
   it("calls onLogout when Log out is clicked", () => {
     const onLogout = vi.fn();
-    render(<Navbar navigate={vi.fn()} onLogout={onLogout} route="/profile" session={session} />);
+    renderNavbar({ session, onLogout });
 
     fireEvent.click(screen.getByRole("button", { name: "Log out" }));
 
     expect(onLogout).toHaveBeenCalled();
   });
 
-  it("navigates to /profile or /login for the brand button depending on session", () => {
+  it("navigates to / when the brand button is clicked", () => {
     const navigate = vi.fn();
-    const { rerender } = render(
-      <Navbar navigate={navigate} onLogout={vi.fn()} route="/login" session={null} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "VibeShield" }));
-    expect(navigate).toHaveBeenLastCalledWith("/login");
+    renderNavbar({ navigate });
 
-    rerender(<Navbar navigate={navigate} onLogout={vi.fn()} route="/profile" session={session} />);
     fireEvent.click(screen.getByRole("button", { name: "VibeShield" }));
-    expect(navigate).toHaveBeenLastCalledWith("/profile");
+
+    expect(navigate).toHaveBeenLastCalledWith("/");
   });
 
-  it.each([
-    ["/analysis", true],
-    ["/analysis/42", true],
-    ["/analysis/new", false], // its own tab, must not also light up Analysis
-    ["/profile", false],
-  ])("marks the Analysis tab active for route %s: %s", (route, expectedActive) => {
-    render(<Navbar navigate={vi.fn()} onLogout={vi.fn()} route={route} session={session} />);
+  it("only shows the API service badge when logged in", () => {
+    const { rerender } = renderNavbar({ session: null });
+    expect(screen.queryByTitle(/API service/)).not.toBeInTheDocument();
 
-    const analysisTab = screen.getByRole("button", { name: "Analysis" });
-    expect(analysisTab.className.includes("bg-zinc-900")).toBe(expectedActive);
+    rerender(
+      <Navbar
+        navigate={vi.fn()}
+        onLogout={vi.fn()}
+        route="/profile"
+        session={session}
+        theme="light"
+        onToggleTheme={vi.fn()}
+        apiState={apiState}
+      />,
+    );
+    expect(screen.getByTitle(/API service/)).toBeInTheDocument();
   });
 });

@@ -16,16 +16,14 @@ const finding: Finding = {
 };
 
 describe("FindingListItem", () => {
-  it("renders the finding's title, category, severity, and status", () => {
+  it("renders the finding's title, severity, and status", () => {
     render(
       <FindingListItem finding={finding} onSelectFinding={vi.fn()} selected={false} />,
     );
 
     expect(screen.getByText(finding.title)).toBeInTheDocument();
-    expect(screen.getByText(finding.checkLabel)).toBeInTheDocument();
     expect(screen.getByText(finding.severity)).toBeInTheDocument();
     expect(screen.getByText(finding.status)).toBeInTheDocument();
-    expect(screen.getByText(finding.affected)).toBeInTheDocument();
   });
 
   it("calls onSelectFinding with the finding's id when clicked", () => {
@@ -56,6 +54,6 @@ describe("FindingListItem", () => {
       <FindingListItem finding={finding} onSelectFinding={vi.fn()} selected />,
     );
 
-    expect(screen.getByRole("button").className).toContain("border-teal-600");
+    expect(screen.getByRole("button").className).toContain("border-primary");
   });
 });

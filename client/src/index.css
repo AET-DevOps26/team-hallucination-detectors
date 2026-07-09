@@ -2,8 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body,
-#root {
-  height: 100%;
+@layer base {
+  :root {
+    /* Light theme — space-separated RGB channels consumed by Tailwind tokens. */
+    --bg: 247 249 251;
+    --surface: 255 255 255;
+    --elevated: 246 249 252;
+    --line: 226 232 240;
+    --fg: 15 23 42;
+    --muted: 100 116 139;
+    --ring: 20 184 166;
+    --primary: 13 148 136;
+    --primary-hover: 15 118 110;
+    --primary-fg: 255 255 255;
+    --primary-soft: 204 251 241;
+  }
+
+  .dark {
+    --bg: 8 11 18;
+    --surface: 16 21 31;
+    --elevated: 23 30 43;
+    --line: 38 46 62;
+    --fg: 226 232 240;
+    --muted: 148 163 184;
+    --ring: 20 184 166;
+    --primary: 20 184 166;
+    --primary-hover: 13 148 136;
+    --primary-fg: 4 17 15;
+    --primary-soft: 19 78 74;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-bg font-sans text-fg antialiased;
+  }
+
+  /* Smooth theme transitions without animating layout-affecting properties. */
+  body,
+  body * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    body * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-bg;
+  }
 }

@@ -52,6 +52,12 @@ spec:
                   name: vibeshield-secrets
                   key: LOGOS_API_KEY
                   optional: true
+            - name: SELFHOSTED_BASE_URL
+              value: "{{ .Values.langchainService.selfhostedBaseUrl }}"
+            - name: SELFHOSTED_MODEL_NAME
+              value: "{{ .Values.langchainService.selfhostedModelName }}"
+            - name: SELFHOSTED_API_KEY
+              value: "{{ .Values.langchainService.selfhostedApiKey }}"
           resources:
             limits:
               memory: "1Gi"

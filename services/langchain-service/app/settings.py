@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     logos_base_url: str = "https://logos.aet.cit.tum.de/v1"
     logos_model_name: str = "openai/gpt-oss-120b"
 
+    # Self-hosted model we run ourselves (Ollama), OpenAI-compatible. The key is a
+    # dummy Ollama ignores — it defaults non-empty so the provider counts as
+    # "configured" wherever the Ollama runtime is deployed. Blank it to disable
+    # the provider (callers then get the standard 503 PROVIDER_NOT_CONFIGURED).
+    selfhosted_api_key: str = "ollama"
+    selfhosted_base_url: str = "http://ollama:11434/v1"
+    selfhosted_model_name: str = "llama3.2:3b"
+
     port: int = 8000
     reload: bool = False
 

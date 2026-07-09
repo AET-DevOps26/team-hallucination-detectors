@@ -8,7 +8,7 @@ type UseAuthStateOptions = {
   navigate: (path: string) => void;
 };
 
-/** Display name shown in the navbar/profile; the backend identifies users by email. */
+/** Display name shown in the navbar; the backend identifies users by email. */
 function usernameFromEmail(email: string): string {
   return email.split("@")[0] || email;
 }
@@ -56,7 +56,6 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
           token: response.token,
         });
         setPassword("");
-        navigate("/profile");
       } else if (authMode === "register") {
         await registerUser(email, password);
         setAuthMessage("Registration successful. You can now log in.");
