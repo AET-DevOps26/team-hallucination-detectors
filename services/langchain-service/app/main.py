@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.chains import (
@@ -25,6 +26,26 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.app_name)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+# Business metrics: which LLM provider is actually driving the core "generate a fix
+# prompt" workflow, how often it succeeds/fails, and how long the provider call takes.
+# The generic HTTP metrics from Instrumentator can't tell provider selection or
+# provider-specific latency apart from that.
+FIX_PROMPT_REQUESTS = Counter(
+    "vibeshield_fix_prompt_requests_total",
+    "Fix-prompt generation requests by provider and outcome",
+    ["provider", "status"],
+)
+FIX_PROMPT_LATENCY = Histogram(
+    "vibeshield_fix_prompt_latency_seconds",
+    "Fix-prompt generation latency by provider",
+    ["provider"],
+)
+CHAT_REQUESTS = Counter(
+    "vibeshield_chat_requests_total",
+    "Chat requests by provider and outcome",
+    ["provider", "status"],
+)
 
 # Chains are cheap but hold a provider-specific model client, so build one per
 # provider on first use and reuse it. A build raises ProviderNotConfigured when
@@ -125,7 +146,12 @@ def health():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    result = await _chat_chain(request.provider).ainvoke({"message": request.message})
+    try:
+        result = await _chat_chain(request.provider).ainvoke({"message": request.message})
+    except Exception:
+        CHAT_REQUESTS.labels(provider=request.provider, status="error").inc()
+        raise
+    CHAT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
     return ChatResponse(response=result.content)
 
@@ -133,16 +159,22 @@ async def chat(request: ChatRequest):
 @app.post("/fix-prompt", response_model=FixPromptResponse)
 async def fix_prompt(request: FixPromptRequest):
     """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature)."""
-    result = await _fix_prompt_chain(request.provider).ainvoke(
-        {
-            "title": request.title,
-            "severity": request.severity,
-            "check": request.check or "n/a",
-            "affected": request.affected or "n/a",
-            "summary": request.summary or "n/a",
-            "impact": request.impact or "n/a",
-            "builder": request.builder or "Generic",
-        }
-    )
+    try:
+        with FIX_PROMPT_LATENCY.labels(provider=request.provider).time():
+            result = await _fix_prompt_chain(request.provider).ainvoke(
+                {
+                    "title": request.title,
+                    "severity": request.severity,
+                    "check": request.check or "n/a",
+                    "affected": request.affected or "n/a",
+                    "summary": request.summary or "n/a",
+                    "impact": request.impact or "n/a",
+                    "builder": request.builder or "Generic",
+                }
+            )
+    except Exception:
+        FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="error").inc()
+        raise
+    FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
     return FixPromptResponse(prompt=result.content.strip())
