@@ -172,10 +172,12 @@ helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
   --set-string secrets.logosApiKey=<key>
 
 # Deploy monitoring — apply each manifest individually, same as CD; skip
-# namespace.yml (cluster-scoped, already provisioned by the course, and
-# likely forbidden under this cluster's namespace-scoped RBAC anyway).
+# namespace.yml (cluster-scoped, already provisioned by the course) and
+# rbac.yml (grants node-level metrics access; course accounts can't apply
+# it — Kubernetes blocks granting RBAC permissions you don't already hold
+# at that scope — so it fails with "attempting to grant RBAC permissions
+# not currently held" for any team member, including CD).
 kubectl create serviceaccount prometheus -n ge65poj --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f k8s/monitoring/rbac.yml -n ge65poj
 kubectl apply -f k8s/monitoring/prometheus-configmap.yml -n ge65poj
 kubectl apply -f k8s/monitoring/prometheus-pvc.yml -n ge65poj
 kubectl apply -f k8s/monitoring/prometheus-deployment.yml -n ge65poj
