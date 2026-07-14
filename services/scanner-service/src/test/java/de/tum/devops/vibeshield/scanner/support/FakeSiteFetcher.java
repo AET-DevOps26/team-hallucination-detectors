@@ -20,6 +20,13 @@ public class FakeSiteFetcher implements SiteFetcher {
         return this;
     }
 
+    /** Like {@link #respond}, but for headers that legitimately repeat (e.g. Set-Cookie). */
+    public FakeSiteFetcher respondWithHeaders(String uri, int status,
+                                              Map<String, List<String>> headers, String body) {
+        responses.put(URI.create(uri), new FetchResult(true, status, headers, body));
+        return this;
+    }
+
     public FakeSiteFetcher unreachable(String uri) {
         responses.put(URI.create(uri), FetchResult.unreachable());
         return this;
@@ -29,5 +36,13 @@ public class FakeSiteFetcher implements SiteFetcher {
     public FetchResult fetch(URI uri) {
         // Unscripted URIs behave like a dead connection, the safe default.
         return responses.getOrDefault(uri, FetchResult.unreachable());
+    }
+
+    @Override
+    public FetchResult fetch(URI uri, Map<String, String> requestHeaders) {
+        // Tests script the response a server would send back for a given request,
+        // not a live server that varies its answer by request header — so the
+        // scripted response is the same regardless of what headers were sent.
+        return fetch(uri);
     }
 }

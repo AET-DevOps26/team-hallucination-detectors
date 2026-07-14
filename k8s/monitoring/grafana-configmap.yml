@@ -26,6 +26,21 @@ data:
         uid: loki
         jsonData:
           maxLines: 1000
+  tempo.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo:3200
+        isDefault: false
+        editable: false
+        uid: tempo
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+          serviceMap:
+            datasourceUid: prometheus
 ---
 apiVersion: v1
 kind: ConfigMap

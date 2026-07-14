@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.4.4"
+    id("org.springframework.boot") version "3.4.13"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -57,3 +57,9 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// Spring Boot 3.4.13's managed versions (tomcat 10.1.50, jackson-bom 2.18.5)
+// still lag behind known CVE fixes — override via the BOM's own version
+// properties until a Spring Boot release picks up the patched versions.
+extra["tomcat.version"] = "10.1.57"
+extra["jackson-bom.version"] = "2.18.9"
