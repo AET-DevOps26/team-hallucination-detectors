@@ -176,6 +176,7 @@ public class ReportService {
             case ADMIN_PATHS -> "Public admin and login paths";
             case SECRETS -> "Client bundle secrets";
             case SENSITIVE_FILES -> "Sensitive files and backups";
+            case COOKIES -> "Cookie security attributes";
             case CORS -> "Cross-origin resource sharing policy";
         };
     }

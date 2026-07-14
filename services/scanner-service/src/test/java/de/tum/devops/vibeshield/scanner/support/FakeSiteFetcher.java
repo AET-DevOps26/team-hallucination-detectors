@@ -20,6 +20,13 @@ public class FakeSiteFetcher implements SiteFetcher {
         return this;
     }
 
+    /** Like {@link #respond}, but for headers that legitimately repeat (e.g. Set-Cookie). */
+    public FakeSiteFetcher respondWithHeaders(String uri, int status,
+                                              Map<String, List<String>> headers, String body) {
+        responses.put(URI.create(uri), new FetchResult(true, status, headers, body));
+        return this;
+    }
+
     public FakeSiteFetcher unreachable(String uri) {
         responses.put(URI.create(uri), FetchResult.unreachable());
         return this;

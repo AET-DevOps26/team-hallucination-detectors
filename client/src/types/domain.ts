@@ -20,6 +20,7 @@ export type ScanOption =
   | "adminPaths"
   | "secrets"
   | "sensitiveFiles"
+  | "cookies"
   | "cors";
 
 export type Site = {

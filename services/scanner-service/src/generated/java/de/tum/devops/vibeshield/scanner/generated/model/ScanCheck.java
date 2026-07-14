@@ -34,6 +34,8 @@ public enum ScanCheck {
   
   SENSITIVE_FILES("sensitiveFiles"),
   
+  COOKIES("cookies"),
+  
   CORS("cors");
 
   private final String value;
