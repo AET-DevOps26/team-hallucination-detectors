@@ -68,6 +68,82 @@ def build_chat_chain(provider: Provider = "openai"):
     return prompt | _model(provider)
 
 
+# Per-builder guidance for the fix-prompt generator. Keyed by the same builder
+# names the client's AI-builder selector uses (see AI_BUILDERS in
+# client/src/pages/AnalysisDetailPage.tsx), so a request's `builder` field maps
+# straight onto a profile with no translation layer. This is what makes builder
+# selection actually change the generated prompt, instead of a cosmetic label.
+BUILDER_PROFILES: dict[str, dict[str, object]] = {
+    "Lovable": {
+        "tone": "conversational, non-technical, project-editor oriented",
+        "output_style": "a single conversational instruction",
+        "must_include": (
+            "ask it to inspect the relevant app page or route",
+            "tell it to preserve the existing visual design",
+        ),
+        "avoid": ("naming file paths unless the finding already names one",),
+    },
+    "Cursor": {
+        "tone": "technical, precise",
+        "output_style": "an implementation prompt that references files and tests",
+        "must_include": (
+            "ask it to identify the likely file(s) first",
+            "ask it to add or update a test that covers the fix",
+        ),
+        "avoid": ("vague UI-only instructions with no code angle",),
+    },
+    "v0": {
+        "tone": "frontend-focused, React/Next.js vocabulary",
+        "output_style": "an instruction focused on the relevant component or config",
+        "must_include": (
+            "reference the relevant React/Next.js component or config",
+            "mention Vercel deployment settings if the finding relates to them",
+        ),
+        "avoid": ("backend- or database-only instructions with no UI angle",),
+    },
+    "Bolt": {
+        "tone": "full-stack, project-environment oriented",
+        "output_style": "an instruction spanning the whole StackBlitz project",
+        "must_include": (
+            "mention the relevant part of the project structure",
+            "consider both client and server code where relevant",
+        ),
+        "avoid": ("assuming a single-file fix when the issue may span layers",),
+    },
+    "Replit": {
+        "tone": "project/file-structure oriented",
+        "output_style": "an instruction referencing the Replit project layout",
+        "must_include": (
+            "mention the relevant file or folder in the project",
+            "tell it to use Replit's Secrets tool for any credential fix",
+        ),
+        "avoid": ("assuming a build step Replit's runtime doesn't have",),
+    },
+    "Generic": {
+        "tone": "plain, platform-agnostic, non-technical",
+        "output_style": "clear step-by-step instructions with no platform-specific vocabulary",
+        "must_include": ("state the fix in plain language a non-developer can follow",),
+        "avoid": ("naming a specific tool, IDE, or platform feature",),
+    },
+}
+
+
+def render_builder_guidance(builder: str) -> str:
+    """Render one builder's profile into the guidance line the system prompt embeds.
+
+    Falls back to the Generic profile for any name outside BUILDER_PROFILES —
+    callers are expected to have already normalized the builder (see
+    app.guardrails.normalize_builder), but this keeps the function safe on its own.
+    """
+    profile = BUILDER_PROFILES.get(builder, BUILDER_PROFILES["Generic"])
+    must_include = "; ".join(profile["must_include"])
+    avoid = "; ".join(profile["avoid"])
+    return (
+        f"Tone: {profile['tone']}. Output style: {profile['output_style']}. "
+        f"Must include: {must_include}. Avoid: {avoid}."
+    )
+
+
 # VibeShield's core GenAI capability: turn one security finding into a single,
 # ready-to-paste prompt the user can hand straight to the AI builder that made
 # their site. The user is non-technical and never reads or writes code, so the
@@ -78,19 +154,26 @@ FIX_PROMPT_SYSTEM = (
     "or write code. Given one security finding from a scan, write a single "
     "prompt the user can paste directly into their AI builder to fix the issue.\n\n"
     "The target AI builder is: {builder}.\n\n"
-    "Tailor the prompt for that builder:\n"
-    "- Lovable: conversational, reference the Lovable project editor.\n"
-    "- Cursor: reference files/code directly, use precise technical language.\n"
-    "- v0: focus on React/Next.js components and Vercel config.\n"
-    "- Bolt: full-stack context, reference StackBlitz environment.\n"
-    "- Replit: mention the Replit project and its file structure.\n"
-    "- Generic: platform-agnostic, plain clear instructions.\n\n"
+    "Tailor the prompt specifically for that builder using this guidance:\n"
+    "{builder_guidance}\n\n"
     "The prompt you write must:\n"
     "- Address the AI builder directly (second person), as an instruction.\n"
     "- State the security problem in plain, concrete language.\n"
     "- Say exactly what to change, and where, based on the finding.\n"
     "- Tell it to apply the fix safely without breaking existing functionality.\n"
     "- Be fully self-contained, so it works pasted on its own.\n\n"
+    "Safety and accuracy rules:\n"
+    "- Never invent specific files, routes, packages, frameworks, or APIs that "
+    "the finding did not mention.\n"
+    "- If the exact file or component isn't known, tell it to inspect the "
+    "relevant route, page, or component instead of guessing a path.\n"
+    "- Never suggest disabling, weakening, or bypassing a security control "
+    "(e.g. turning off HTTPS, disabling a CSP, ignoring certificate errors) as "
+    "a way to make the problem go away.\n"
+    "- Never suggest hiding, suppressing, or ignoring the finding instead of "
+    "fixing it.\n"
+    "- Preserve existing UI and behavior; only change what the fix requires.\n"
+    "- Always end with a concrete step to verify the fix worked.\n\n"
     "Output ONLY the prompt text. No preamble, no sign-off, no commentary, and "
     "no surrounding markdown code fences."
 )

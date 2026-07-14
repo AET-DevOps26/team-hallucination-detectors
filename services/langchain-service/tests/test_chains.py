@@ -1,11 +1,14 @@
 import pytest
 
 from app.chains import (
+    BUILDER_PROFILES,
+    FIX_PROMPT_SYSTEM,
     ProviderNotConfigured,
     _model,
     _provider_config,
     build_chat_chain,
     build_fix_prompt_chain,
+    render_builder_guidance,
 )
 from app.settings import settings
 
@@ -79,6 +82,7 @@ def test_build_fix_prompt_chain_wires_builder_placeholder_and_temperature(monkey
     system_template = chain.first.messages[0].prompt.template
     human_template = chain.first.messages[1].prompt.template
     assert "{builder}" in system_template
+    assert "{builder_guidance}" in system_template
     assert "{title}" in human_template
     assert "{severity}" in human_template
     assert chain.last.temperature == 0.3
@@ -87,3 +91,24 @@ def test_build_fix_prompt_chain_wires_builder_placeholder_and_temperature(monkey
 def test_build_fix_prompt_chain_propagates_missing_provider():
     with pytest.raises(ProviderNotConfigured):
         build_fix_prompt_chain("logos")
+
+
+@pytest.mark.parametrize("builder", ["Lovable", "Cursor", "v0", "Bolt", "Replit", "Generic"])
+def test_render_builder_guidance_covers_every_known_builder(builder):
+    guidance = render_builder_guidance(builder)
+
+    profile = BUILDER_PROFILES[builder]
+    assert profile["tone"] in guidance
+    assert profile["output_style"] in guidance
+    for must_include in profile["must_include"]:
+        assert must_include in guidance
+
+
+def test_render_builder_guidance_falls_back_to_generic_for_unknown_builder():
+    assert render_builder_guidance("SomeUnknownTool") == render_builder_guidance("Generic")
+
+
+def test_fix_prompt_system_forbids_inventing_and_disabling_controls():
+    assert "invent" in FIX_PROMPT_SYSTEM.lower()
+    assert "disabling" in FIX_PROMPT_SYSTEM.lower() or "disable" in FIX_PROMPT_SYSTEM.lower()
+    assert "verify" in FIX_PROMPT_SYSTEM.lower()

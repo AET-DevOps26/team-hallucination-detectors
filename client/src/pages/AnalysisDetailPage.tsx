@@ -486,6 +486,16 @@ function AnalysisHeader({
 const AI_BUILDERS = ["Generic", "Lovable", "Cursor", "v0", "Bolt", "Replit"] as const;
 type AiBuilder = (typeof AI_BUILDERS)[number];
 
+/** One line per builder so the mode switch reads as intentional, not cosmetic. */
+const BUILDER_HELP: Record<AiBuilder, string> = {
+  Generic: "Plain-language, platform-agnostic prompt",
+  Lovable: "Plain-language app editor prompt",
+  Cursor: "Codebase-aware implementation prompt",
+  v0: "React/Next UI-focused prompt",
+  Bolt: "Full-stack project prompt",
+  Replit: "Project/file-structure prompt",
+};
+
 function FixPromptFooter({ finding }: { finding: Finding }) {
   const { toast } = useToast();
   const { provider, setProvider } = useLlmProvider();
@@ -558,6 +568,7 @@ function FixPromptFooter({ finding }: { finding: Finding }) {
                 </button>
               ))}
             </div>
+            <p className="text-xs text-muted">{BUILDER_HELP[builder]}</p>
           </div>
 
           <div className="space-y-2.5">

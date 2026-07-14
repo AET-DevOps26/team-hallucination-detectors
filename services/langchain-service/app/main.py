@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from prometheus_client import Counter, Histogram
@@ -17,6 +17,17 @@ from app.chains import (
     ProviderNotConfigured,
     build_chat_chain,
     build_fix_prompt_chain,
+    render_builder_guidance,
+)
+from app.guardrails import (
+    MAX_LONG_FIELD_LENGTH,
+    MAX_SHORT_FIELD_LENGTH,
+    MAX_TITLE_LENGTH,
+    FixPromptGenerationFailed,
+    normalize_builder,
+    normalize_severity,
+    validate_fix_prompt,
+    validate_title,
 )
 from app.settings import settings
 
@@ -73,14 +84,29 @@ class ChatResponse(BaseModel):
 class FixPromptRequest(BaseModel):
     """One security finding, in the plain-language shape the dashboard already holds."""
 
-    title: str = Field(..., min_length=1)
-    severity: str = Field(..., min_length=1)
-    check: str = ""
-    affected: str = ""
-    summary: str = ""
-    impact: str = ""
+    title: str = Field(..., min_length=1, max_length=MAX_TITLE_LENGTH)
+    severity: str = Field(..., min_length=1, max_length=40)
+    check: str = Field("", max_length=MAX_SHORT_FIELD_LENGTH)
+    affected: str = Field("", max_length=MAX_LONG_FIELD_LENGTH)
+    summary: str = Field("", max_length=MAX_LONG_FIELD_LENGTH)
+    impact: str = Field("", max_length=MAX_LONG_FIELD_LENGTH)
     builder: str = "Generic"
     provider: Provider = "openai"
+
+    @field_validator("title")
+    @classmethod
+    def _validate_title(cls, value: str) -> str:
+        return validate_title(value)
+
+    @field_validator("severity")
+    @classmethod
+    def _validate_severity(cls, value: str) -> str:
+        return normalize_severity(value)
+
+    @field_validator("builder")
+    @classmethod
+    def _normalize_builder(cls, value: str) -> str:
+        return normalize_builder(value)
 
 
 class FixPromptResponse(BaseModel):
@@ -106,10 +132,21 @@ def _error(status_code: int, code: str, message: str, details: Any = None) -> JS
     return JSONResponse(status_code=status_code, content=jsonable_encoder(body))
 
 
+def _sanitize_validation_error(error: dict[str, Any]) -> dict[str, Any]:
+    """Custom field_validator failures put the raw ValueError under ctx.error,
+    which jsonable_encoder can't serialize; stringify it so the handler below
+    never itself 500s on a validation failure."""
+    ctx = error.get("ctx")
+    if isinstance(ctx, dict) and "error" in ctx:
+        error = {**error, "ctx": {**ctx, "error": str(ctx["error"])}}
+    return error
+
+
 @app.exception_handler(RequestValidationError)
 async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
     """Maps FastAPI's default ``{ detail: [...] }`` validation body to the unified schema."""
-    return _error(422, "VALIDATION_ERROR", "Request validation failed.", exc.errors())
+    errors = [_sanitize_validation_error(error) for error in exc.errors()]
+    return _error(422, "VALIDATION_ERROR", "Request validation failed.", errors)
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -126,6 +163,19 @@ async def handle_provider_not_configured(_: Request, exc: ProviderNotConfigured)
         "PROVIDER_NOT_CONFIGURED",
         f"The '{exc.provider}' AI provider is not configured on the server.",
         {"provider": exc.provider},
+    )
+
+
+@app.exception_handler(FixPromptGenerationFailed)
+async def handle_fix_prompt_generation_failed(
+    _: Request, exc: FixPromptGenerationFailed
+) -> JSONResponse:
+    """The LLM's output still failed our guardrails after one regeneration attempt."""
+    return _error(
+        502,
+        "FIX_PROMPT_GENERATION_FAILED",
+        "Could not generate a safe fix prompt for this finding.",
+        {"reasons": exc.reasons},
     )
 
 
@@ -158,23 +208,47 @@ async def chat(request: ChatRequest):
 
 @app.post("/fix-prompt", response_model=FixPromptResponse)
 async def fix_prompt(request: FixPromptRequest):
-    """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature)."""
+    """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature).
+
+    The output is validated against app.guardrails before it's returned; a
+    prompt that fails (missing verification step, dangerous instruction,
+    markdown fences, ...) is regenerated once, and only surfaced as an error
+    if it fails validation twice in a row.
+    """
+    inputs = {
+        "title": request.title,
+        "severity": request.severity,
+        "check": request.check or "n/a",
+        "affected": request.affected or "n/a",
+        "summary": request.summary or "n/a",
+        "impact": request.impact or "n/a",
+        "builder": request.builder,
+        "builder_guidance": render_builder_guidance(request.builder),
+    }
+    finding_context = " ".join(
+        [request.title, request.check, request.summary, request.impact]
+    ).lower()
+
+    chain = _fix_prompt_chain(request.provider)
+
+    # Metrics (#79) wrap the guardrailed generation (#84): the latency timer spans
+    # the retry, and a guardrail failure after regeneration counts as an error.
     try:
         with FIX_PROMPT_LATENCY.labels(provider=request.provider).time():
-            result = await _fix_prompt_chain(request.provider).ainvoke(
-                {
-                    "title": request.title,
-                    "severity": request.severity,
-                    "check": request.check or "n/a",
-                    "affected": request.affected or "n/a",
-                    "summary": request.summary or "n/a",
-                    "impact": request.impact or "n/a",
-                    "builder": request.builder or "Generic",
-                }
-            )
+            result = await chain.ainvoke(inputs)
+            prompt = result.content.strip()
+            problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
+
+            if problems:
+                logger.warning("Fix prompt failed validation (%s); regenerating once.", problems)
+                result = await chain.ainvoke(inputs)
+                prompt = result.content.strip()
+                problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
+                if problems:
+                    raise FixPromptGenerationFailed(problems)
     except Exception:
         FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="error").inc()
         raise
     FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
-    return FixPromptResponse(prompt=result.content.strip())
+    return FixPromptResponse(prompt=prompt)
