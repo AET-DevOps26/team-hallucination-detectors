@@ -119,6 +119,11 @@ class PageDiscoveryTest {
                 return new FetchResult(true, 200, Map.of(),
                         "<a href=\"/about\">About</a>");
             }
+
+            @Override
+            public FetchResult fetch(URI uri, Map<String, String> requestHeaders) {
+                return fetch(uri);
+            }
         };
 
         assertThat(discovery.discover(TARGET, budgetOfOne)).containsExactly(TARGET);
