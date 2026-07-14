@@ -51,7 +51,15 @@ class ScannerApiIT {
     static void startVulnerableTestSite() throws Exception {
         targetSite = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         targetSite.createContext("/", exchange -> {
-            byte[] body = "<html><body>hi</body></html>".getBytes(StandardCharsets.UTF_8);
+            byte[] body = "<html><body>hi <a href=\"/about\">About</a></body></html>"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(body);
+            }
+        });
+        targetSite.createContext("/about", exchange -> {
+            byte[] body = "<html><body>about us</body></html>".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, body.length);
             try (OutputStream out = exchange.getResponseBody()) {
                 out.write(body);
@@ -109,6 +117,48 @@ class ScannerApiIT {
             assertThat(finding.get("explanation").asText()).isNotBlank();
             assertThat(finding.get("suggestedFix").asText()).isNotBlank();
         });
+    }
+
+    @Test
+    void scan_withCrawlAndDepth_discoversLinkedPages() throws Exception {
+        String request = """
+                {"url": "%s", "checks": ["crawl"], "crawlDepth": 1}
+                """.formatted(targetUrl);
+
+        MvcResult result = mockMvc.perform(post("/scan")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("Completed"))
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(body.get("executedChecks")).hasSize(1);
+        assertThat(body.get("executedChecks").get(0).asText()).isEqualTo("crawl");
+
+        List<String> pages = new ArrayList<>();
+        body.get("pages").forEach(page -> pages.add(page.asText()));
+        assertThat(pages).containsExactlyInAnyOrder(targetUrl, targetUrl + "about");
+    }
+
+    @Test
+    void scan_withCrawlAtDefaultDepth_scansOnlyTheStartUrl() throws Exception {
+        // crawlDepth defaults to 0 ("scans only the start URL") when omitted — a
+        // linked page must not be discovered just because "crawl" was requested.
+        String request = """
+                {"url": "%s", "checks": ["crawl"]}
+                """.formatted(targetUrl);
+
+        MvcResult result = mockMvc.perform(post("/scan")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("Completed"))
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(body.get("pages")).hasSize(1);
+        assertThat(body.get("pages").get(0).asText()).isEqualTo(targetUrl);
     }
 
     @Test

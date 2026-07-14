@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Runs the implemented checks against one target and assembles the contract result.
- * Unimplemented check types (crawl, adminPaths — post-MVP) are skipped and the
+ * Unimplemented check types (adminPaths — post-MVP) are skipped and the
  * result's {@code executedChecks} makes that visible instead of silently lying.
  */
 @Service
@@ -30,11 +30,14 @@ public class ScanExecutor {
 
     private final List<SecurityCheck> checks;
     private final FetcherFactory fetcherFactory;
+    private final PageDiscovery pageDiscovery;
     private final MeterRegistry meterRegistry;
 
-    public ScanExecutor(List<SecurityCheck> checks, FetcherFactory fetcherFactory, MeterRegistry meterRegistry) {
+    public ScanExecutor(List<SecurityCheck> checks, FetcherFactory fetcherFactory,
+                        PageDiscovery pageDiscovery, MeterRegistry meterRegistry) {
         this.checks = checks;
         this.fetcherFactory = fetcherFactory;
+        this.pageDiscovery = pageDiscovery;
         this.meterRegistry = meterRegistry;
     }
 
@@ -68,8 +71,29 @@ public class ScanExecutor {
             return failed(blocked.getMessage());
         }
 
-        List<ScannerFinding> findings = new ArrayList<>();
         List<ScanCheck> executed = new ArrayList<>();
+        List<URI> pages = List.of(target);
+        if (request.getChecks().contains(ScanCheck.CRAWL)) {
+            // crawlDepth 0 (the contract default) means "scan only the start URL" —
+            // honor that literally rather than discovering pages nobody asked for.
+            // Any depth >= 1 currently gets the same one-hop discovery; true
+            // multi-hop crawling (depth 2/3) and the includeSubdomains option are
+            // not yet honored (same-origin, one hop only).
+            int crawlDepth = request.getCrawlDepth() == null ? 0 : request.getCrawlDepth();
+            if (crawlDepth >= 1) {
+                try {
+                    pages = pageDiscovery.discover(target, fetcher);
+                } catch (BlockedAddressException blocked) {
+                    // A discovered link resolving to a non-public address mid-crawl
+                    // (e.g. DNS rebinding) must not abort the scan; the target itself
+                    // already passed the SSRF guard, so keep scanning the start URL.
+                    log.warn("Blocked page discovery for {}: {}", target, blocked.getMessage());
+                }
+            }
+            executed.add(ScanCheck.CRAWL);
+        }
+
+        List<ScannerFinding> findings = new ArrayList<>();
         for (SecurityCheck check : checks) {
             if (!request.getChecks().contains(check.type())) {
                 continue;
@@ -90,7 +114,7 @@ public class ScanExecutor {
         return new ScanExecutionResult()
                 .status(ScanExecutionResult.StatusEnum.COMPLETED)
                 .executedChecks(executed)
-                .pages(List.of(target))
+                .pages(pages)
                 .findings(findings);
     }
 
