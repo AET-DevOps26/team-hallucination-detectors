@@ -154,8 +154,30 @@ Helm charts are in `helm/vibeshield/`. Kubernetes manifests for monitoring are i
 
 | Student | Area |
 |---|---|
-| Aziz Chouria | *(TBD)* |
-| Julian Jungnitz | *(TBD)* |
-| Tim Dreher | *(TBD)* |
+| Aziz Chouria | Infrastructure, CI/CD, monitoring, security hardening, auth-service |
+| Julian Jungnitz | API contract & codegen, scanner-service, scan lifecycle, GenAI integration |
+| Tim Dreher | Scanner checks, rescan & reporting, RAG & guardrails, database & testing |
 
-> Fill in areas before the July 17th deadline — per-student responsibilities are an automatic-fail-adjacent deliverable per the course brief.
+### Aziz Chouria — Infrastructure, CI/CD & monitoring
+- **CD pipeline end-to-end** — GHCR image publishing → Helm upgrade with secret injection → Rancher deployment
+- **Azure provisioning** — Terraform (infrastructure) and Ansible (configuration) path
+- **Kubernetes & Helm** — cluster manifests and Helm charts for all services
+- **Monitoring stack** — Prometheus, Grafana, and Loki, plus custom business metrics
+- **Security hardening** across the services and deployment
+- **Auth-service endpoints** — registration, login, JWT issuance, and password reset
+
+### Julian Jungnitz — API contract, scanning & GenAI
+- **Contract-first OpenAPI pipeline** — single source of truth with code generation into Java, Python, and TypeScript, plus a CI drift gate
+- **Scanner-service core** — the security-check engine with an SSRF guard
+- **Scan lifecycle & background worker** — DB-backed queue, claim-once concurrency, and stale-scan recovery
+- **GenAI integration** — three selectable providers spanning cloud and local Ollama paths, model prewarming, and graceful 503 degradation
+- **Autoscaling & health** — HorizontalPodAutoscaler plus liveness and readiness probes
+- **UML diagrams, documentation, and the initial CI setup**
+
+### Tim Dreher — Checks, reporting, RAG & testing
+- **Scanner checks** — the individual security-check implementations
+- **Rescan & comparison** — re-running scans and diffing results against prior runs
+- **Reports & exports** — findings report generation and export
+- **langchain-service** — service initialization, RAG knowledge base, and fix-prompt guardrails
+- **Database schema isolation** — Flyway migrations with per-service schemas
+- **Cross-stack test suites** — pytest, Vitest, and JUnit coverage
