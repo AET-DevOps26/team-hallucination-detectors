@@ -32,10 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           cache: npm
@@ -43,7 +45,7 @@ jobs:
 
       # The OpenAPI generator CLI runs a Java jar under the hood.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: "21"
@@ -82,10 +84,12 @@ jobs:
           - scanner-service
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: "21"
@@ -93,7 +97,7 @@ jobs:
       # No gradle wrapper is committed, so install the same Gradle version the
       # Dockerfiles build with (8.10.2) and cache its dependencies.
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
         with:
           gradle-version: "8.10.2"
 
@@ -103,7 +107,7 @@ jobs:
 
       - name: Upload test reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-reports-${{ matrix.service }}
           path: services/${{ matrix.service }}/build/reports/tests/
@@ -116,10 +120,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           cache: npm
@@ -141,26 +147,33 @@ jobs:
         working-directory: client
         run: npm run build
 
-  # Python GenAI service: install dependencies and byte-compile the package to
-  # catch import/syntax errors. No test suite exists yet, so this is the build gate.
+  # Python GenAI service: install dependencies, byte-compile the package to
+  # catch import/syntax errors, then run the pytest suite (chains + API,
+  # with the LLM clients mocked — no network calls, no API keys needed).
   langchain-service:
     name: langchain-service
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: services/langchain-service/requirements.txt
+          cache-dependency-path: services/langchain-service/requirements-dev.txt
 
       - name: Install dependencies
         working-directory: services/langchain-service
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Compile sources
         working-directory: services/langchain-service
         run: python -m compileall app
+
+      - name: Test
+        working-directory: services/langchain-service
+        run: python -m pytest
