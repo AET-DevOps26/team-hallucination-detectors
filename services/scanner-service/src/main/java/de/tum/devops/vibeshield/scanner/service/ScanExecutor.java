@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Runs the implemented checks against one target and assembles the contract result.
- * Unimplemented check types (adminPaths — post-MVP) are skipped and the
+ * Unimplemented check types (secrets — post-MVP) are skipped and the
  * result's {@code executedChecks} makes that visible instead of silently lying.
  */
 @Service
