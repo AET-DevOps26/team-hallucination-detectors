@@ -19,7 +19,9 @@ export type ScanOption =
   | "headers"
   | "adminPaths"
   | "secrets"
-  | "sensitiveFiles";
+  | "sensitiveFiles"
+  | "cookies"
+  | "cors";
 
 export type Site = {
   id: string;
