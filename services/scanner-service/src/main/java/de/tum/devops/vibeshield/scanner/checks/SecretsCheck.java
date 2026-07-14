@@ -96,6 +96,9 @@ public class SecretsCheck implements SecurityCheck {
             return List.of();
         }
 
+        // bodySnippet() is capped at HttpSiteFetcher.MAX_BODY_BYTES (16 KB), so a
+        // secret past that offset in a large minified bundle is not scanned. Raising
+        // the cap (or streaming) for script assets is tracked as a follow-up.
         List<Source> sources = new ArrayList<>();
         sources.add(new Source(target, homepage.bodySnippet()));
         for (URI scriptUri : sameOriginScriptUris(target, homepage.bodySnippet())) {

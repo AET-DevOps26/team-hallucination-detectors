@@ -134,4 +134,19 @@ class SecretsCheckTest {
 
         assertThat(check.run(TARGET, fetcher)).isEmpty();
     }
+
+    @Test
+    void publishableAndPublicByDesignKeys_areNotFlagged() {
+        // Stripe publishable keys (pk_live_) and Google API keys (AIza…) are
+        // public-by-design and safe to ship client-side. Flagging them would turn
+        // the check into noise, so this pins the intentional negative.
+        String publishableStripeKey = "pk" + "_live_" + "51ABCDEFPUBLISHABLEKEY0000000000";
+        String googleApiKey = "AIza" + "SyD0000000000000000000000000000EXAMPLE";
+        FakeSiteFetcher fetcher = new FakeSiteFetcher()
+                .respond("https://shop.example.org/", 200, Map.of(),
+                        "<script>const stripe='" + publishableStripeKey + "';"
+                                + "const maps='" + googleApiKey + "';</script>");
+
+        assertThat(check.run(TARGET, fetcher)).isEmpty();
+    }
 }
