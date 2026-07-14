@@ -706,7 +706,7 @@ components:
       description: |
         A surface-level check the scanner can run. Values match the scan
         options offered in the client UI.
-      enum: [crawl, https, headers, adminPaths, secrets, sensitiveFiles]
+      enum: [crawl, https, headers, adminPaths, secrets, sensitiveFiles, cookies]
 
     Severity:
       type: string
