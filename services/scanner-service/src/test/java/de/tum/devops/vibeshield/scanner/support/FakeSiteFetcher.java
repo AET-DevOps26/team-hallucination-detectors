@@ -37,4 +37,12 @@ public class FakeSiteFetcher implements SiteFetcher {
         // Unscripted URIs behave like a dead connection, the safe default.
         return responses.getOrDefault(uri, FetchResult.unreachable());
     }
+
+    @Override
+    public FetchResult fetch(URI uri, Map<String, String> requestHeaders) {
+        // Tests script the response a server would send back for a given request,
+        // not a live server that varies its answer by request header — so the
+        // scripted response is the same regardless of what headers were sent.
+        return fetch(uri);
+    }
 }

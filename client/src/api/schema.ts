@@ -459,7 +459,7 @@ export interface components {
          *     options offered in the client UI.
          * @enum {string}
          */
-        ScanCheck: "crawl" | "https" | "headers" | "adminPaths" | "secrets" | "sensitiveFiles" | "cookies";
+        ScanCheck: "crawl" | "https" | "headers" | "adminPaths" | "secrets" | "sensitiveFiles" | "cookies" | "cors";
         /**
          * @description How urgently a finding should be fixed.
          * @enum {string}

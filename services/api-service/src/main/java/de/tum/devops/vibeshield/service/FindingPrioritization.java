@@ -42,10 +42,11 @@ final class FindingPrioritization {
             case HTTPS -> 0;
             case HEADERS -> 1;
             case COOKIES -> 2;
-            case SECRETS -> 3;
-            case SENSITIVE_FILES -> 4;
-            case ADMIN_PATHS -> 5;
-            case CRAWL -> 6;
+            case CORS -> 3;
+            case SECRETS -> 4;
+            case SENSITIVE_FILES -> 5;
+            case ADMIN_PATHS -> 6;
+            case CRAWL -> 7;
         };
     }
 }

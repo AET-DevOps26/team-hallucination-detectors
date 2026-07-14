@@ -23,6 +23,7 @@ export const scanLabels: Record<ScanOption, string> = {
   secrets: "Client bundle secrets",
   sensitiveFiles: "Sensitive files and backups",
   cookies: "Cookie security attributes",
+  cors: "Cross-origin resource sharing policy",
 };
 
 export const scanCategoryStyles: Record<ScanOption, string> = {
@@ -33,6 +34,7 @@ export const scanCategoryStyles: Record<ScanOption, string> = {
   secrets: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300",
   sensitiveFiles: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300",
   cookies: "border-lime-300 bg-lime-50 text-lime-800 dark:border-lime-500/40 dark:bg-lime-500/10 dark:text-lime-300",
+  cors: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-300",
 };
 
 export const scanDescriptions: Record<ScanOption, string> = {
@@ -43,6 +45,7 @@ export const scanDescriptions: Record<ScanOption, string> = {
   secrets: "Scans your client-side JavaScript bundles for accidentally exposed API keys, tokens, and credentials.",
   sensitiveFiles: "Probes for backup files, config dumps, and sensitive paths like .env or wp-config.php left publicly accessible.",
   cookies: "Checks that cookies your site sets carry the Secure, HttpOnly, and SameSite attributes.",
+  cors: "Checks whether your site's CORS policy blindly reflects any requesting origin instead of using a fixed allow-list.",
 };
 
 export const severityStyles: Record<Severity, string> = {
