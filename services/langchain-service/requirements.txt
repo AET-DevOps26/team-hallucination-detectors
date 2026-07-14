@@ -1,9 +1,9 @@
-fastapi==0.115.6
+fastapi==0.139.0
 uvicorn[standard]==0.32.1
 prometheus-fastapi-instrumentator==7.0.0
 
-langchain==0.3.14
-langchain-openai==0.2.14
-langchain-core==0.3.29
+langchain==0.3.30
+langchain-openai==0.3.35
+langchain-core==0.3.86
 
 pydantic-settings==2.7.0

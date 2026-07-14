@@ -32,7 +32,11 @@ public enum ScanCheck {
   
   SECRETS("secrets"),
   
-  SENSITIVE_FILES("sensitiveFiles");
+  SENSITIVE_FILES("sensitiveFiles"),
+  
+  COOKIES("cookies"),
+  
+  CORS("cors");
 
   private final String value;
 

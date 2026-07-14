@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.chains import (
@@ -36,6 +37,26 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.app_name)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+# Business metrics: which LLM provider is actually driving the core "generate a fix
+# prompt" workflow, how often it succeeds/fails, and how long the provider call takes.
+# The generic HTTP metrics from Instrumentator can't tell provider selection or
+# provider-specific latency apart from that.
+FIX_PROMPT_REQUESTS = Counter(
+    "vibeshield_fix_prompt_requests_total",
+    "Fix-prompt generation requests by provider and outcome",
+    ["provider", "status"],
+)
+FIX_PROMPT_LATENCY = Histogram(
+    "vibeshield_fix_prompt_latency_seconds",
+    "Fix-prompt generation latency by provider",
+    ["provider"],
+)
+CHAT_REQUESTS = Counter(
+    "vibeshield_chat_requests_total",
+    "Chat requests by provider and outcome",
+    ["provider", "status"],
+)
 
 # Chains are cheap but hold a provider-specific model client, so build one per
 # provider on first use and reuse it. A build raises ProviderNotConfigured when
@@ -175,7 +196,12 @@ def health():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    result = await _chat_chain(request.provider).ainvoke({"message": request.message})
+    try:
+        result = await _chat_chain(request.provider).ainvoke({"message": request.message})
+    except Exception:
+        CHAT_REQUESTS.labels(provider=request.provider, status="error").inc()
+        raise
+    CHAT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
     return ChatResponse(response=result.content)
 
@@ -205,16 +231,24 @@ async def fix_prompt(request: FixPromptRequest):
 
     chain = _fix_prompt_chain(request.provider)
 
-    result = await chain.ainvoke(inputs)
-    prompt = result.content.strip()
-    problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
+    # Metrics (#79) wrap the guardrailed generation (#84): the latency timer spans
+    # the retry, and a guardrail failure after regeneration counts as an error.
+    try:
+        with FIX_PROMPT_LATENCY.labels(provider=request.provider).time():
+            result = await chain.ainvoke(inputs)
+            prompt = result.content.strip()
+            problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
 
-    if problems:
-        logger.warning("Fix prompt failed validation (%s); regenerating once.", problems)
-        result = await chain.ainvoke(inputs)
-        prompt = result.content.strip()
-        problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
-        if problems:
-            raise FixPromptGenerationFailed(problems)
+            if problems:
+                logger.warning("Fix prompt failed validation (%s); regenerating once.", problems)
+                result = await chain.ainvoke(inputs)
+                prompt = result.content.strip()
+                problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
+                if problems:
+                    raise FixPromptGenerationFailed(problems)
+    except Exception:
+        FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="error").inc()
+        raise
+    FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
     return FixPromptResponse(prompt=prompt)

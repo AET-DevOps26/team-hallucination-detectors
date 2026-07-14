@@ -27,4 +27,16 @@ public record FetchResult(
                 .flatMap(entry -> entry.getValue().stream())
                 .findFirst();
     }
+
+    /**
+     * Every value of a header, case-insensitively. Needed for headers like
+     * Set-Cookie that legitimately repeat once per value, where {@link #header}
+     * would silently drop all but the first.
+     */
+    public List<String> headerValues(String name) {
+        return headers.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && entry.getKey().equalsIgnoreCase(name))
+                .flatMap(entry -> entry.getValue().stream())
+                .toList();
+    }
 }
