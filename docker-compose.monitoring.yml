@@ -25,6 +25,7 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
@@ -56,7 +57,20 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yml
 
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: vibeshield-tempo
+    volumes:
+      - ./monitoring/tempo/tempo-config.yaml:/etc/tempo/tempo-config.yaml:ro
+      - tempo_data:/var/tempo
+    command: -config.file=/etc/tempo/tempo-config.yaml
+    ports:
+      - "3200:3200"   # Tempo query API (Grafana datasource)
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver (used by services; simpler than gRPC/h2c)
+
 volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  tempo_data:
