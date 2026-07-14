@@ -5,16 +5,21 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Clean old deployment on Azure VM
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
           host: ${{ secrets.AZURE_PUBLIC_IP }}
           username: ${{ secrets.AZURE_USER }}
@@ -31,7 +36,7 @@ jobs:
             cp ~/certs/gateway.crt ~/certs/gateway.key ~/app/gateway/certs/ 2>/dev/null || true
 
       - name: Copy repository to Azure VM
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.AZURE_PUBLIC_IP }}
           username: ${{ secrets.AZURE_USER }}
@@ -40,7 +45,7 @@ jobs:
           target: "~/app"
 
       - name: Write .env and start services
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
           host: ${{ secrets.AZURE_PUBLIC_IP }}
           username: ${{ secrets.AZURE_USER }}
