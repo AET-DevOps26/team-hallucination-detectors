@@ -122,6 +122,45 @@ data:
             { "expr": "jvm_memory_used_bytes{job=\"scanner-service\",area=\"heap\"}", "legendFormat": "scanner-service heap", "refId": "C" }
           ],
           "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Scans by Outcome (scans/s)",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } }
+          },
+          "targets": [
+            { "expr": "sum(rate(vibeshield_scans_total[5m])) by (status)", "legendFormat": "{{status}}", "refId": "A" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Findings by Severity (findings/s)",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } }
+          },
+          "targets": [
+            { "expr": "sum(rate(vibeshield_findings_total[5m])) by (severity)", "legendFormat": "{{severity}}", "refId": "A" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "GenAI Fix-Prompt Requests by Provider (req/s)",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } }
+          },
+          "targets": [
+            { "expr": "sum(rate(vibeshield_fix_prompt_requests_total[5m])) by (provider, status)", "legendFormat": "{{provider}} ({{status}})", "refId": "A" }
+          ],
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
         }
       ]
     }
