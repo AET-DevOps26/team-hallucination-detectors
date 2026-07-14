@@ -44,10 +44,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -58,7 +60,7 @@ jobs:
       # `latest` moves only on the default branch; semver tags appear on v* tags.
       - name: Derive tags & labels for ${{ matrix.service.name }}
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service.name }}
           tags: |
@@ -68,7 +70,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push ${{ matrix.service.name }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ${{ matrix.service.context }}
           push: true
@@ -85,7 +87,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up kubeconfig
         run: |
@@ -134,7 +138,10 @@ jobs:
           kubectl apply -f k8s/monitoring/loki-service.yml
           kubectl apply -f k8s/monitoring/promtail-configmap.yml
           kubectl apply -f k8s/monitoring/promtail-daemonset.yml
-          kubectl apply -f k8s/monitoring/grafana-secret.yml
+          kubectl create secret generic grafana-credentials -n ge65poj \
+            --from-literal=admin-user=admin \
+            --from-literal=admin-password=${{ secrets.GRAFANA_ADMIN_PASSWORD }} \
+            --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f k8s/monitoring/grafana-configmap.yml
           kubectl apply -f k8s/monitoring/grafana-dashboard-configmap.yml
           kubectl apply -f k8s/monitoring/grafana-pvc.yml

@@ -41,10 +41,12 @@ final class FindingPrioritization {
         return switch (check) {
             case HTTPS -> 0;
             case HEADERS -> 1;
-            case SECRETS -> 2;
-            case SENSITIVE_FILES -> 3;
-            case ADMIN_PATHS -> 4;
-            case CRAWL -> 5;
+            case COOKIES -> 2;
+            case CORS -> 3;
+            case SECRETS -> 4;
+            case SENSITIVE_FILES -> 5;
+            case ADMIN_PATHS -> 6;
+            case CRAWL -> 7;
         };
     }
 }
