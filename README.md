@@ -103,8 +103,7 @@ Schema is managed by Flyway migrations in each service (`services/*/src/main/res
 
 **CI** runs on every PR targeting `main`, and again on the resulting merge commit (`.github/workflows/ci.yml`):
 - OpenAPI spec lint (Redocly) + drift check (generated code matches spec)
-- Build + test: api-service, auth-service, scanner-service (Gradle), client (Vitest)
-- langchain-service: install + byte-compile only — no test suite wired into CI yet
+- Build + test: api-service, auth-service, scanner-service (Gradle), client (Vitest), langchain-service (pytest)
 
 **CD** runs on merge to `main` (`.github/workflows/cd.yml`):
 1. Builds and pushes all service images to GHCR tagged `sha-<commit>` + `latest` (semver tags added automatically when a `v*` git tag is pushed)
@@ -135,15 +134,14 @@ cd services/api-service && gradle test
 cd services/auth-service && gradle test
 cd services/scanner-service && gradle test
 
-# Python GenAI service — no test suite wired in yet; CI only byte-compiles it
-cd services/langchain-service && pip install -r requirements.txt && python -m compileall app
+# Python GenAI service (requirements-dev.txt = app requirements + pytest)
+cd services/langchain-service && pip install -r requirements-dev.txt && python -m pytest
 
 # React client
 cd client && npm ci && npm test
 ```
 
-All of the above run automatically in CI on every PR — except langchain-service,
-which is currently only build-checked (byte-compiled), not tested.
+All of the above run automatically in CI on every PR.
 
 ---
 
