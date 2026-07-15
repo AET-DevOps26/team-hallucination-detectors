@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: ge65poj
+  labels:
+    app: alertmanager
+data:
+  alertmanager.yml: |
+    # UI-only delivery: alerts routed from Prometheus are grouped, deduplicated
+    # and shown in the Alertmanager web UI. There is no external notifier wired
+    # in (no SMTP/Slack/webhook) — the "receiver" below is intentionally empty,
+    # which is a valid Alertmanager receiver that simply holds the alert for the
+    # UI. To add real notifications later, give this receiver an integration
+    # (email_configs / slack_configs / webhook_configs) and supply its secret.
+    global:
+      resolve_timeout: 5m
+
+    route:
+      receiver: vibeshield-ui
+      # Group alerts by name + service so a burst collapses into one entry.
+      group_by: [alertname, job]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 3h
+
+    receivers:
+      - name: vibeshield-ui
+
+    inhibit_rules:
+      # A firing critical (e.g. ServiceDown) suppresses lower-severity noise for
+      # the same job — the service being down explains its error/latency alerts.
+      - source_matchers: [severity = "critical"]
+        target_matchers: [severity = "warning"]
+        equal: [job]

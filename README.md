@@ -122,8 +122,15 @@ Deployed to the `ge65poj` namespace alongside the app.
 - **Prometheus** — scrapes `/actuator/prometheus` (Spring Boot) and `/metrics` (FastAPI) from all services
 - **Grafana** — live dashboard at https://ge65poj-monitoring.stud.k8s.aet.cit.tum.de (provisioned from `k8s/monitoring/grafana-dashboard-configmap.yml`)
 - **Loki + Promtail** — log aggregation from all pods
-- **Alert rules** (`k8s/monitoring/prometheus-configmap.yml`): ServiceDown (1 min), 
-HighErrorRate (>5% 5xx, sustained 2 min), SlowResponseTime (P95 > 2s, sustained 5 min)
+- **Alert rules** (`k8s/monitoring/prometheus-configmap.yml`): ServiceDown (1 min),
+  HighErrorRate (>5% 5xx, 2 min), SlowResponseTime (P95 > 2s, 5 min) for the Spring
+  services, plus GenAIHighErrorRate / GenAISlowResponseTime for the FastAPI GenAI service
+- **Alertmanager** — Prometheus routes firing alerts to Alertmanager, which groups and
+  deduplicates them and shows them at https://ge65poj-alertmanager.stud.k8s.aet.cit.tum.de.
+  Delivery is UI-only by design (no external SMTP/Slack channel provisioned); the receiver
+  in `k8s/monitoring/alertmanager-configmap.yml` is ready to take an email/Slack/webhook
+  integration if one is added later.
+
 ---
 
 ## Running tests
