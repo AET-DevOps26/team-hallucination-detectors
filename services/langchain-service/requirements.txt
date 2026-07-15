@@ -10,3 +10,4 @@ langchain-openai==0.3.35
 langchain-core==0.3.86
 
 pydantic-settings==2.7.0
+PyJWT==2.10.1

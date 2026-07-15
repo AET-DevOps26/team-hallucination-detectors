@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     selfhosted_base_url: str = "http://ollama:11434/v1"
     selfhosted_model_name: str = "llama3.2:3b"
 
+    # Shared HMAC secret used to VALIDATE the JWTs the auth-service issues — must
+    # match APP_JWT_SECRET across all services (see docs/auth.md). Env: APP_JWT_SECRET.
+    # Same dev default as docker-compose so the compose stack authenticates out of
+    # the box; deployed environments inject the real secret.
+    app_jwt_secret: str = "dev-secret-change-me-minimum-32-chars-required"
+
     port: int = 8000
     reload: bool = False
 
