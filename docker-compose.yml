@@ -68,7 +68,7 @@ services:
       LOGOS_API_KEY: ${LOGOS_API_KEY:-}
       LOGOS_BASE_URL: ${LOGOS_BASE_URL:-https://logos.aet.cit.tum.de/v1}
       LOGOS_MODEL_NAME: ${LOGOS_MODEL_NAME:-openai/gpt-oss-120b}
-      SELFHOSTED_API_KEY: ${SELFHOSTED_API_KEY:-ollama}
+      SELFHOSTED_API_KEY: ${SELFHOSTED_API_KEY-ollama}
       SELFHOSTED_BASE_URL: ${SELFHOSTED_BASE_URL:-http://ollama:11434/v1}
       SELFHOSTED_MODEL_NAME: ${SELFHOSTED_MODEL_NAME:-llama3.2:3b}
       APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me-minimum-32-chars-required}
