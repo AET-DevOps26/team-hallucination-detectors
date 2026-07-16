@@ -26,9 +26,11 @@ class Settings(BaseSettings):
 
     # Shared HMAC secret used to VALIDATE the JWTs the auth-service issues — must
     # match APP_JWT_SECRET across all services (see docs/auth.md). Env: APP_JWT_SECRET.
-    # Same dev default as docker-compose so the compose stack authenticates out of
-    # the box; deployed environments inject the real secret.
-    app_jwt_secret: str = "dev-secret-change-me-minimum-32-chars-required"
+    # No fallback on purpose: left blank the service fails closed (rejects every
+    # request in require_auth) rather than trusting a repo-known default. The
+    # compose stack and every deployment inject the real secret — docker-compose
+    # supplies APP_JWT_SECRET (with a dev default), so local dev still works.
+    app_jwt_secret: str = ""
 
     port: int = 8000
     reload: bool = False

@@ -18,6 +18,9 @@ def _reset_provider_keys(monkeypatch):
     """
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(settings, "logos_api_key", "")
+    # app_jwt_secret has no default (the service fails closed when unset), so tests
+    # supply one — standing in for the secret a real deployment injects.
+    monkeypatch.setattr(settings, "app_jwt_secret", "test-jwt-secret-minimum-32-characters-long")
     _chat_chain.cache_clear()
     _fix_prompt_chain.cache_clear()
 
