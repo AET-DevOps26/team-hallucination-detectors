@@ -57,6 +57,13 @@ management:
     health:
       probes:
         enabled: true
+  metrics:
+    distribution:
+      # Emit http_server_requests_seconds_bucket so histogram_quantile-based
+      # latency alerts (SlowResponseTime) and P95 dashboards actually have
+      # buckets to work with — without this only count/sum are exported.
+      percentiles-histogram:
+        http.server.requests: true
 
 springdoc:
   swagger-ui:

@@ -103,13 +103,12 @@ Schema is managed by Flyway migrations in each service (`services/*/src/main/res
 
 **CI** runs on every PR targeting `main`, and again on the resulting merge commit (`.github/workflows/ci.yml`):
 - OpenAPI spec lint (Redocly) + drift check (generated code matches spec)
-- Build + test: api-service, auth-service, scanner-service (Gradle), client (Vitest)
-- langchain-service: install + byte-compile only — no test suite wired into CI yet
+- Build + test: api-service, auth-service, scanner-service (Gradle), client (Vitest), langchain-service (pytest)
 
 **CD** runs on merge to `main` (`.github/workflows/cd.yml`):
 1. Builds and pushes all service images to GHCR tagged `sha-<commit>` + `latest` (semver tags added automatically when a `v*` git tag is pushed)
 2. Deploys to Kubernetes via Helm (`helm upgrade --install vibeshield ./helm/vibeshield`)
-3. Deploys the monitoring stack — applies each manifest under `k8s/monitoring/` individually, in dependency order (configmaps/PVCs before deployments); `namespace.yml` is deliberately not applied here
+3. Deploys the monitoring stack — applies each manifest under `k8s/monitoring/` individually, in dependency order (configmaps/PVCs before deployments), into the `ge65poj` namespace alongside the app
 
 Required GitHub Actions secrets: `KUBECONFIG_AET`, `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `OPENAI_API_KEY`, `LOGOS_API_KEY`.
 
@@ -122,8 +121,17 @@ Deployed to the `ge65poj` namespace alongside the app.
 - **Prometheus** — scrapes `/actuator/prometheus` (Spring Boot) and `/metrics` (FastAPI) from all services
 - **Grafana** — live dashboard at https://ge65poj-monitoring.stud.k8s.aet.cit.tum.de (provisioned from `k8s/monitoring/grafana-dashboard-configmap.yml`)
 - **Loki + Promtail** — log aggregation from all pods
-- **Alert rules** (`k8s/monitoring/prometheus-configmap.yml`): ServiceDown (1 min), 
-HighErrorRate (>5% 5xx, sustained 2 min), SlowResponseTime (P95 > 2s, sustained 5 min)
+- **Alert rules** (`k8s/monitoring/prometheus-configmap.yml`): ServiceDown (1 min),
+  HighErrorRate (>5% 5xx, 2 min), SlowResponseTime (P95 > 2s, 5 min) for the Spring
+  services, plus GenAIHighErrorRate / GenAISlowResponseTime for the FastAPI GenAI service
+- **Alertmanager** — Prometheus routes firing alerts to Alertmanager, which groups and
+  deduplicates them and shows them at https://ge65poj-alertmanager.stud.k8s.aet.cit.tum.de.
+  Delivery is UI-only by design (no external SMTP/Slack channel provisioned); the receiver
+  in `k8s/monitoring/alertmanager-configmap.yml` is ready to take an email/Slack/webhook
+  integration if one is added later. Silences and notification state persist on a PVC,
+  and CD restarts Prometheus + Alertmanager after applying their ConfigMaps so config
+  changes actually take effect (neither reloads a mounted file on its own).
+
 ---
 
 ## Running tests
@@ -135,15 +143,14 @@ cd services/api-service && gradle test
 cd services/auth-service && gradle test
 cd services/scanner-service && gradle test
 
-# Python GenAI service — no test suite wired in yet; CI only byte-compiles it
-cd services/langchain-service && pip install -r requirements.txt && python -m compileall app
+# Python GenAI service (requirements-dev.txt = app requirements + pytest)
+cd services/langchain-service && pip install -r requirements-dev.txt && python -m pytest
 
 # React client
 cd client && npm ci && npm test
 ```
 
-All of the above run automatically in CI on every PR — except langchain-service,
-which is currently only build-checked (byte-compiled), not tested.
+All of the above run automatically in CI on every PR.
 
 ---
 
@@ -172,7 +179,6 @@ helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
   --set-string secrets.logosApiKey=<key>
 
 # Deploy monitoring — apply each manifest individually, same as CD; skip
-# namespace.yml (cluster-scoped, already provisioned by the course) and
 # rbac.yml (grants node-level metrics access; course accounts can't apply
 # it — Kubernetes blocks granting RBAC permissions you don't already hold
 # at that scope — so it fails with "attempting to grant RBAC permissions
@@ -211,6 +217,15 @@ kubectl apply -f k8s/monitoring/grafana-ingress.yml -n ge65poj
 
 Helm charts are in `helm/vibeshield/`. Kubernetes manifests for monitoring are in `k8s/monitoring/`.
 
+> **`k8s/deployments/`, `k8s/services/`, `k8s/secrets/`, `k8s/storage/`,
+> `k8s/hpa.yml`, `k8s/ingress.yml` are reference-only.** They are the earlier
+> raw-manifest form of the app deployment, kept for readability and diagram
+> traceability but **superseded by the Helm chart** — CD never applies them.
+> Do not `kubectl apply` them directly: they reference `:latest` image tags and
+> carry no secret wiring, so applying them yields broken pods. The Helm chart
+> under `helm/vibeshield/` is the only supported app deploy path; only
+> `k8s/monitoring/` is applied outside Helm.
+
 ---
 
 ## Azure VM deployment
@@ -235,9 +250,8 @@ NSG rules for `22` and `3000` open, and a **static** public IP so the
 
 | Student | Area |
 |---|---|
-| Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints |
-| Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, GenAI integration (langchain-service providers), auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
-| Tim Dreher | scanner-service security checks, rescan & comparison + report/PDF exports, GenAI fix-prompt hardening & RAG knowledge base, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
+| Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints and authentication/onboarding flow |
+| Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, **GenAI integration** (langchain-service providers), client scan/analysis workflows and UI redesign, auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
+| Tim Dreher | **Scanner-service security checks, rescan & comparison + report/PDF exports**, **GenAI fix-prompt hardening/guardrails & semantic RAG knowledge base**, database, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
 
 > auth-service is a shared responsibility: Aziz owns the auth-service endpoints (register/login/reset, JWT issuance); Julian owns JWT validation and enforcement in api-service.
-

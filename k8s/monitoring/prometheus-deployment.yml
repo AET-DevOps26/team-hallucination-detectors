@@ -7,6 +7,11 @@ metadata:
     app: prometheus
 spec:
   replicas: 1
+  # Recreate: the data volume is a ReadWriteOnce PVC and CD restarts this
+  # Deployment on every deploy; a rolling update would deadlock waiting for a
+  # new pod that can't attach the volume (and the TSDB lock) the old pod holds.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: prometheus
