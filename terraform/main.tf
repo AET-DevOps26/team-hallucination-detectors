@@ -46,6 +46,10 @@ resource "azurerm_network_security_group" "nsg" {
     destination_address_prefix = "*"
   }
 
+  # Only the gateway ports 3000/3443 are exposed on purpose. The
+  # docker-compose.monitoring.yml overlay ports (Grafana 3001, Prometheus 9090,
+  # Loki 3100, Tempo 3200/4317/4318) are deliberately NOT opened here —
+  # reach them via an SSH tunnel, e.g. `ssh -L 3001:localhost:3001 <vm>`.
   security_rule {
     name                       = "Gateway"
     priority                   = 1010
