@@ -12,6 +12,11 @@ data:
     rule_files:
       - /etc/prometheus/rules.yml
 
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: [alertmanager:9093]
+
     scrape_configs:
       - job_name: prometheus
         static_configs:
@@ -50,6 +55,10 @@ data:
               summary: "Service {{ $labels.job }} is down"
               description: "{{ $labels.job }} has been unreachable for more than 1 minute."
 
+          # The next two alerts use Spring Boot / Micrometer metric names
+          # (http_server_requests_*), so they cover api-, auth- and
+          # scanner-service. The GenAI service (FastAPI) exports different
+          # metric names and is covered by the GenAI* alerts below.
           - alert: HighErrorRate
             expr: |
               sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (job)
@@ -74,3 +83,39 @@ data:
             annotations:
               summary: "Slow P95 response time on {{ $labels.job }}"
               description: "95th percentile response time on {{ $labels.job }} exceeded 2 seconds."
+
+          # GenAI (langchain-service, FastAPI) equivalents. prometheus-fastapi-
+          # instrumentator exports http_requests_total{status="5xx"} (bucketed
+          # status class, not exact code). For latency, use the high-resolution
+          # histogram http_request_duration_highr_seconds_bucket (buckets to
+          # 60s); the low-resolution http_request_duration_seconds tops out at
+          # 1s, so quantiles computed from it can never exceed 1.0.
+          #
+          # Aggregate `by (job)` even though the selector pins a single job:
+          # the fired alert must carry the job label so Alertmanager can group
+          # on it and a critical ServiceDown{job="langchain-service"} can
+          # inhibit these warnings (its inhibit rule matches on `equal: [job]`).
+          - alert: GenAIHighErrorRate
+            expr: |
+              sum(rate(http_requests_total{job="langchain-service",status="5xx"}[5m])) by (job)
+              /
+              sum(rate(http_requests_total{job="langchain-service"}[5m])) by (job)
+              > 0.05
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High 5xx error rate on the GenAI service"
+              description: "More than 5% of requests to langchain-service are returning 5xx errors."
+
+          - alert: GenAISlowResponseTime
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_highr_seconds_bucket{job="langchain-service"}[5m])) by (job, le)
+              ) > 10
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Slow P95 response time on the GenAI service"
+              description: "95th percentile response time on langchain-service exceeded 10 seconds (LLM generation is slow by nature; this flags pathological latency)."
