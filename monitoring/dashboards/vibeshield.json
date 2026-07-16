@@ -72,7 +72,7 @@
         { "expr": "sum(rate(http_server_requests_seconds_count{job=\"api-service\",status=~\"5..\"}[5m]))", "legendFormat": "api-service", "refId": "A" },
         { "expr": "sum(rate(http_server_requests_seconds_count{job=\"auth-service\",status=~\"5..\"}[5m]))", "legendFormat": "auth-service", "refId": "B" },
         { "expr": "sum(rate(http_server_requests_seconds_count{job=\"scanner-service\",status=~\"5..\"}[5m]))", "legendFormat": "scanner-service", "refId": "C" },
-        { "expr": "sum(rate(http_requests_total{job=\"langchain-service\",status_code=~\"5..\"}[5m]))", "legendFormat": "langchain-service", "refId": "D" }
+        { "expr": "sum(rate(http_requests_total{job=\"langchain-service\",status=\"5xx\"}[5m]))", "legendFormat": "langchain-service", "refId": "D" }
       ],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
@@ -92,7 +92,7 @@
         { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"api-service\"}[5m])) by (le))", "legendFormat": "api-service p95", "refId": "A" },
         { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"auth-service\"}[5m])) by (le))", "legendFormat": "auth-service p95", "refId": "B" },
         { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"scanner-service\"}[5m])) by (le))", "legendFormat": "scanner-service p95", "refId": "C" },
-        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"langchain-service\"}[5m])) by (le))", "legendFormat": "langchain-service p95", "refId": "D" }
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket{job=\"langchain-service\"}[5m])) by (le))", "legendFormat": "langchain-service p95", "refId": "D" }
       ],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },

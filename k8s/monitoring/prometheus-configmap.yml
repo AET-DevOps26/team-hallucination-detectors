@@ -81,7 +81,10 @@ data:
 
           # GenAI (langchain-service, FastAPI) equivalents. prometheus-fastapi-
           # instrumentator exports http_requests_total{status="5xx"} (bucketed
-          # status class, not exact code) and http_request_duration_seconds_bucket.
+          # status class, not exact code). For latency, use the high-resolution
+          # histogram http_request_duration_highr_seconds_bucket (buckets to
+          # 60s); the low-resolution http_request_duration_seconds tops out at
+          # 1s, so quantiles computed from it can never exceed 1.0.
           - alert: GenAIHighErrorRate
             expr: |
               sum(rate(http_requests_total{job="langchain-service",status="5xx"}[5m]))
@@ -98,7 +101,7 @@ data:
           - alert: GenAISlowResponseTime
             expr: |
               histogram_quantile(0.95,
-                sum(rate(http_request_duration_seconds_bucket{job="langchain-service"}[5m])) by (le)
+                sum(rate(http_request_duration_highr_seconds_bucket{job="langchain-service"}[5m])) by (le)
               ) > 10
             for: 5m
             labels:
