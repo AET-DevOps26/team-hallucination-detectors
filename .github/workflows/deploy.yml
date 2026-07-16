@@ -61,11 +61,15 @@ jobs:
           script: |
             cd ~/app
 
+            # SMTP config is optional, not required: docker-compose.yml already falls
+            # back to the bundled Mailpit container when these are blank, and
+            # application.yml defaults every mail.* property, so auth-service boots
+            # fine without it — only sendResetLink() degrades (mail lands in Mailpit's
+            # local inbox instead of a real address) until these are configured.
             for name in SMTP_HOST SMTP_USERNAME SMTP_PASSWORD PASSWORD_RESET_MAIL_FROM; do
               eval "value=\${$name}"
               if [ -z "$value" ]; then
-                echo "Required password-reset mail setting $name is missing" >&2
-                exit 1
+                echo "::warning::Password-reset mail setting $name is not set — password-reset emails will land in the local Mailpit inbox, not real addresses, until it's configured (repo Variables/Secrets)."
               fi
             done
 
@@ -90,3 +94,35 @@ jobs:
             docker compose pull --ignore-pull-failures || true
             docker compose up -d --build
             docker compose ps
+
+      - name: Seed the RAG knowledge base
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        with:
+          host: ${{ secrets.AZURE_PUBLIC_IP }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_PRIVATE_KEY }}
+          script: |
+            cd ~/app
+
+            # Idempotent (upserts by title in Postgres, safe to run on every
+            # deploy — see app/embed_knowledge.py). Retried because the
+            # database container has no healthcheck of its own (plain
+            # `depends_on: - database` only waits for the container to start,
+            # not for Postgres to accept connections), so it may still be
+            # initializing right after `docker compose up`. DATABASE_URL /
+            # EMBEDDING_API_KEY are additive config (see app/settings.py), so
+            # a persistent failure here degrades fix-prompt retrieval rather
+            # than failing the deploy.
+            echo "Seeding RAG knowledge base..."
+            seeded=false
+            for i in $(seq 1 10); do
+              if docker compose exec -T langchain-service python -m app.embed_knowledge; then
+                seeded=true
+                break
+              fi
+              echo "embed_knowledge attempt $i/10 failed, retrying in 5s..."
+              sleep 5
+            done
+            if [ "$seeded" = false ]; then
+              echo "::warning::Could not seed the RAG knowledge base after 10 attempts; fix-prompt retrieval will stay disabled until 'docker compose exec langchain-service python -m app.embed_knowledge' is run manually."
+            fi
