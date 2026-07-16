@@ -1,0 +1,15 @@
+# Default owners for everything in the repo, unless a later match takes
+# precedence. Keeps every PR reviewable by at least one of the team.
+*       @chouria @JulianJungnitz @DreherTim
+
+# DevOps: CI/CD, Kubernetes, Helm, monitoring
+/.github/workflows/  @chouria
+/k8s/                @chouria
+/helm/               @chouria
+/monitoring/         @chouria
+/docker-compose*.yml @chouria
+
+# Backend: auth-service, API contract, GenAI integration
+/services/auth-service/       @JulianJungnitz
+/services/langchain-service/  @JulianJungnitz
+/api/                          @JulianJungnitz

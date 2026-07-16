@@ -16,12 +16,16 @@ gateway), and **self-hosted** (a local Ollama model we run ourselves).
 > it is *not* proxied by the [api-service](api.md). The api-service only stores the
 > plain-language `suggestedFix` text that the client sends here as input.
 
-> **Unauthenticated.** No endpoint checks a JWT; it relies on being unpublished
-> (reachable only via the gateway). It's otherwise stateless except for one optional
-> piece: a small Postgres-backed RAG knowledge base for the fix-prompt endpoint (see
-> [RAG knowledge base](#rag-knowledge-base) below). Retrieval is additive grounding,
-> not a hard dependency — with no `DATABASE_URL` configured the service behaves
-> exactly as it did before that table existed.
+> **Authenticated.** The user-facing endpoints (`/chat`, `/fix-prompt`) require a
+> valid JWT — the same shared-secret HMAC token the auth-service issues and the
+> Java services validate (see [auth.md](auth.md)) — so the GenAI capability isn't
+> open to the internet even though it's reachable through the gateway. `/health`
+> and `/metrics` stay unauthenticated for probes and Prometheus scraping. The
+> service is otherwise stateless except for one optional piece: a small
+> Postgres-backed RAG knowledge base for the fix-prompt endpoint (see
+> [RAG knowledge base](#rag-knowledge-base) below). Retrieval is additive
+> grounding, not a hard dependency — with no `DATABASE_URL` configured the
+> service behaves exactly as it did before that table existed.
 
 ## Stack
 
@@ -57,7 +61,8 @@ returns a clean `503 PROVIDER_NOT_CONFIGURED` rather than failing to boot.
 
 ## Endpoints
 
-All endpoints are on the root app (no routers) and require **no authentication**.
+All endpoints are on the root app (no routers). `/chat` and `/fix-prompt` require a
+valid `Authorization: Bearer <jwt>` header; `/health` and `/metrics` are public.
 
 | Method | Path | Body | Success |
 |---|---|---|---|
@@ -254,5 +259,5 @@ secret the Java services use, pointed at the shared `database` Service.
   Logos — see [client.md](client.md).)
 - **Env-var naming mismatch** for the OpenAI model: internal `MODEL_NAME` vs.
   compose/`.env` indirection `LANGCHAIN_MODEL_NAME`.
-- **No authentication** on any endpoint — the service relies entirely on being
-  unpublished and gateway-only.
+- **JWT-protected** user endpoints (`/chat`, `/fix-prompt`) via the shared
+  `APP_JWT_SECRET`; `/health` and `/metrics` remain public for probes/scraping.

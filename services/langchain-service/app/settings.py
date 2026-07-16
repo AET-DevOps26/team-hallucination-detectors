@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     embedding_base_url: str = "https://api.openai.com/v1"
     embedding_model_name: str = "text-embedding-3-small"
 
+    # Shared HMAC secret used to VALIDATE the JWTs the auth-service issues — must
+    # match APP_JWT_SECRET across all services (see docs/auth.md). Env: APP_JWT_SECRET.
+    # No fallback on purpose: left blank the service fails closed (rejects every
+    # request in require_auth) rather than trusting a repo-known default. The
+    # compose stack and every deployment inject the real secret — docker-compose
+    # supplies APP_JWT_SECRET (with a dev default), so local dev still works.
+    app_jwt_secret: str = ""
+
     port: int = 8000
     reload: bool = False
 

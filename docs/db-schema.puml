@@ -1,19 +1,13 @@
-@startuml VibeShield Database Schema
-!define TABLE(name) entity name
+@startuml Database Schema
+!theme plain
+skinparam defaultFontSize 12
 skinparam linetype ortho
-skinparam entity {
-  BackgroundColor #1e1e2e
-  BorderColor #89b4fa
-  FontColor #cdd6f4
-  ArrowColor #89b4fa
-}
-skinparam note {
-  BackgroundColor #313244
-  BorderColor #585b70
-  FontColor #cdd6f4
-}
 
-package "auth_service schema" #313244 {
+title VibeShield — Database Schema (ERD)
+
+!define TABLE(name) entity name
+
+package "auth_service schema" #F1F8F1 {
   TABLE(users) {
     + id : BIGINT <<PK, generated>>
     --
@@ -33,14 +27,16 @@ package "auth_service schema" #313244 {
   users ||--o{ password_reset_tokens : "has"
 }
 
-package "public schema (api-service)" #313244 {
+package "api_service schema" #EEF4FF {
   TABLE(websites) {
     + id : BIGINT <<PK, generated>>
     --
-    owner_id : BIGINT <<JWT sub, logical ref>>
+    owner_id : BIGINT <<JWT "userId" claim, logical ref>>
     url : VARCHAR(2048)
     name : VARCHAR(255)
     created_at : TIMESTAMPTZ
+    ..
+    UNIQUE (owner_id, url)
   }
 
   TABLE(scans) {
@@ -79,4 +75,5 @@ note bottom of websites
   owner_id is the user.id from auth_service.
   Cross-schema ownership — no FK (separate service boundary).
 end note
+
 @enduml

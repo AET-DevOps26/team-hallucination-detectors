@@ -3,13 +3,14 @@ from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Any, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.chains import (
@@ -30,6 +31,7 @@ from app.guardrails import (
     validate_fix_prompt,
     validate_title,
 )
+from app.auth import Unauthorized, require_auth, unauthorized_response
 from app.retrieval import retrieve_context
 from app.settings import settings
 
@@ -47,6 +49,26 @@ async def _lifespan(_: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=_lifespan)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+# Business metrics: which LLM provider is actually driving the core "generate a fix
+# prompt" workflow, how often it succeeds/fails, and how long the provider call takes.
+# The generic HTTP metrics from Instrumentator can't tell provider selection or
+# provider-specific latency apart from that.
+FIX_PROMPT_REQUESTS = Counter(
+    "vibeshield_fix_prompt_requests_total",
+    "Fix-prompt generation requests by provider and outcome",
+    ["provider", "status"],
+)
+FIX_PROMPT_LATENCY = Histogram(
+    "vibeshield_fix_prompt_latency_seconds",
+    "Fix-prompt generation latency by provider",
+    ["provider"],
+)
+CHAT_REQUESTS = Counter(
+    "vibeshield_chat_requests_total",
+    "Chat requests by provider and outcome",
+    ["provider", "status"],
+)
 
 # Chains are cheap but hold a provider-specific model client, so build one per
 # provider on first use and reuse it. A build raises ProviderNotConfigured when
@@ -139,6 +161,12 @@ async def handle_validation_error(_: Request, exc: RequestValidationError) -> JS
     return _error(422, "VALIDATION_ERROR", "Request validation failed.", errors)
 
 
+@app.exception_handler(Unauthorized)
+async def handle_unauthorized(_: Request, exc: Unauthorized) -> JSONResponse:
+    """Renders a failed JWT check in the unified schema with its specific code."""
+    return unauthorized_response(exc)
+
+
 @app.exception_handler(StarletteHTTPException)
 async def handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Wraps explicit HTTP errors (e.g. 404) in the unified schema."""
@@ -185,14 +213,19 @@ def health():
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    result = await _chat_chain(request.provider).ainvoke({"message": request.message})
+async def chat(request: ChatRequest, _: None = Depends(require_auth)):
+    try:
+        result = await _chat_chain(request.provider).ainvoke({"message": request.message})
+    except Exception:
+        CHAT_REQUESTS.labels(provider=request.provider, status="error").inc()
+        raise
+    CHAT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
     return ChatResponse(response=result.content)
 
 
 @app.post("/fix-prompt", response_model=FixPromptResponse)
-async def fix_prompt(request: FixPromptRequest):
+async def fix_prompt(request: FixPromptRequest, _: None = Depends(require_auth)):
     """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature).
 
     The output is validated against app.guardrails before it's returned; a
@@ -220,16 +253,24 @@ async def fix_prompt(request: FixPromptRequest):
 
     chain = _fix_prompt_chain(request.provider)
 
-    result = await chain.ainvoke(inputs)
-    prompt = result.content.strip()
-    problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
+    # Metrics (#79) wrap the guardrailed generation (#84): the latency timer spans
+    # the retry, and a guardrail failure after regeneration counts as an error.
+    try:
+        with FIX_PROMPT_LATENCY.labels(provider=request.provider).time():
+            result = await chain.ainvoke(inputs)
+            prompt = result.content.strip()
+            problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
 
-    if problems:
-        logger.warning("Fix prompt failed validation (%s); regenerating once.", problems)
-        result = await chain.ainvoke(inputs)
-        prompt = result.content.strip()
-        problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
-        if problems:
-            raise FixPromptGenerationFailed(problems)
+            if problems:
+                logger.warning("Fix prompt failed validation (%s); regenerating once.", problems)
+                result = await chain.ainvoke(inputs)
+                prompt = result.content.strip()
+                problems = validate_fix_prompt(prompt, inputs["affected"], finding_context)
+                if problems:
+                    raise FixPromptGenerationFailed(problems)
+    except Exception:
+        FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="error").inc()
+        raise
+    FIX_PROMPT_REQUESTS.labels(provider=request.provider, status="success").inc()
 
     return FixPromptResponse(prompt=prompt)

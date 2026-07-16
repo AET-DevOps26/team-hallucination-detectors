@@ -70,6 +70,27 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: DATABASE_URL
               value: "postgresql+asyncpg://{{ .Values.database.user }}:$(POSTGRES_PASSWORD)@database:5432/{{ .Values.database.name }}"
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: APP_JWT_SECRET
+            - name: OTEL_SERVICE_NAME
+              value: "langchain-service"
+            # gRPC, not http/protobuf: the Python OTLP HTTP exporter silently
+            # stops sending spans after ~13 minutes of uptime with no logged
+            # error (confirmed via Tempo's own span-received counter staying
+            # flat). gRPC has run cleanly for 30+ minutes in the same test.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://tempo:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"
           resources:
             limits:
               memory: "1Gi"

@@ -10,6 +10,7 @@ import de.tum.devops.vibeshield.scanner.http.BlockedAddressException;
 import de.tum.devops.vibeshield.scanner.http.RequestBudgetExceededException;
 import de.tum.devops.vibeshield.scanner.http.SiteFetcher;
 import de.tum.devops.vibeshield.scanner.support.FakeSiteFetcher;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
@@ -51,7 +52,7 @@ class ScanExecutorTest {
     @Test
     void execute_returnsFailed_whenTargetIsUnreachable() {
         FakeSiteFetcher fetcher = new FakeSiteFetcher(); // no scripted response -> unreachable
-        ScanExecutor executor = new ScanExecutor(List.of(), factoryReturning(fetcher));
+        ScanExecutor executor = new ScanExecutor(List.of(), factoryReturning(fetcher), mock(PageDiscovery.class), new SimpleMeterRegistry());
 
         ScanExecutionResult result = executor.execute(request(ScanCheck.HTTPS));
 
@@ -66,7 +67,7 @@ class ScanExecutorTest {
     void execute_returnsFailed_whenTargetIsBlockedBySsrfGuard() {
         SiteFetcher fetcher = mock(SiteFetcher.class);
         when(fetcher.fetch(TARGET)).thenThrow(new BlockedAddressException("Target resolves to a private address."));
-        ScanExecutor executor = new ScanExecutor(List.of(), factoryReturning(fetcher));
+        ScanExecutor executor = new ScanExecutor(List.of(), factoryReturning(fetcher), mock(PageDiscovery.class), new SimpleMeterRegistry());
 
         ScanExecutionResult result = executor.execute(request(ScanCheck.HTTPS));
 
@@ -79,7 +80,7 @@ class ScanExecutorTest {
         FakeSiteFetcher fetcher = new FakeSiteFetcher().respond(TARGET.toString(), 200, java.util.Map.of(), "<html/>");
         SecurityCheck https = checkFor(ScanCheck.HTTPS, List.of());
         SecurityCheck headers = checkFor(ScanCheck.HEADERS, List.of());
-        ScanExecutor executor = new ScanExecutor(List.of(https, headers), factoryReturning(fetcher));
+        ScanExecutor executor = new ScanExecutor(List.of(https, headers), factoryReturning(fetcher), mock(PageDiscovery.class), new SimpleMeterRegistry());
 
         executor.execute(request(ScanCheck.HTTPS)); // headers not requested
 
@@ -92,7 +93,7 @@ class ScanExecutorTest {
         FakeSiteFetcher fetcher = new FakeSiteFetcher().respond(TARGET.toString(), 200, java.util.Map.of(), "<html/>");
         SecurityCheck https = checkFor(ScanCheck.HTTPS, List.of(finding(ScanCheck.HTTPS, "No HTTPS")));
         SecurityCheck headers = checkFor(ScanCheck.HEADERS, List.of(finding(ScanCheck.HEADERS, "Missing CSP")));
-        ScanExecutor executor = new ScanExecutor(List.of(https, headers), factoryReturning(fetcher));
+        ScanExecutor executor = new ScanExecutor(List.of(https, headers), factoryReturning(fetcher), mock(PageDiscovery.class), new SimpleMeterRegistry());
 
         ScanExecutionResult result = executor.execute(request(ScanCheck.HTTPS, ScanCheck.HEADERS));
 
@@ -110,7 +111,7 @@ class ScanExecutorTest {
         when(broken.type()).thenReturn(ScanCheck.HTTPS);
         when(broken.run(any(), any())).thenThrow(new RuntimeException("boom"));
         SecurityCheck healthy = checkFor(ScanCheck.HEADERS, List.of(finding(ScanCheck.HEADERS, "Missing CSP")));
-        ScanExecutor executor = new ScanExecutor(List.of(broken, healthy), factoryReturning(fetcher));
+        ScanExecutor executor = new ScanExecutor(List.of(broken, healthy), factoryReturning(fetcher), mock(PageDiscovery.class), new SimpleMeterRegistry());
 
         ScanExecutionResult result = executor.execute(request(ScanCheck.HTTPS, ScanCheck.HEADERS));
 
@@ -128,7 +129,7 @@ class ScanExecutorTest {
         when(exhausting.run(any(), any())).thenThrow(new RequestBudgetExceededException(10));
         SecurityCheck neverRun = checkFor(ScanCheck.SENSITIVE_FILES, List.of());
         ScanExecutor executor = new ScanExecutor(List.of(first, exhausting, neverRun),
-                factoryReturning(fetcher));
+                factoryReturning(fetcher), mock(PageDiscovery.class), new SimpleMeterRegistry());
 
         ScanExecutionResult result = executor.execute(
                 request(ScanCheck.HTTPS, ScanCheck.HEADERS, ScanCheck.SENSITIVE_FILES));

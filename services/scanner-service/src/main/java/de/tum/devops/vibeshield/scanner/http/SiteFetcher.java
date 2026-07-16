@@ -1,6 +1,7 @@
 package de.tum.devops.vibeshield.scanner.http;
 
 import java.net.URI;
+import java.util.Map;
 
 /**
  * The scanner's only window onto the target site. Implementations must stay passive:
@@ -17,4 +18,13 @@ public interface SiteFetcher {
      * @throws RequestBudgetExceededException when the per-scan request cap is spent
      */
     FetchResult fetch(URI uri);
+
+    /**
+     * Like {@link #fetch(URI)}, but with additional request headers merged in —
+     * e.g. a synthetic Origin header to observe how the server's CORS policy
+     * responds. Still a passive GET; counts against the same request budget.
+     *
+     * @throws RequestBudgetExceededException when the per-scan request cap is spent
+     */
+    FetchResult fetch(URI uri, Map<String, String> requestHeaders);
 }

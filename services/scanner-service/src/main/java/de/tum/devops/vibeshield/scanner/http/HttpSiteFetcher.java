@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -46,16 +47,21 @@ public class HttpSiteFetcher implements SiteFetcher {
 
     @Override
     public FetchResult fetch(URI uri) {
+        return fetch(uri, Map.of());
+    }
+
+    @Override
+    public FetchResult fetch(URI uri, Map<String, String> requestHeaders) {
         // SSRF gate: refuse non-public targets before a connection is ever opened.
         ssrfGuard.assertAllowed(uri);
         if (requestsSent.incrementAndGet() > requestBudget) {
             throw new RequestBudgetExceededException(requestBudget);
         }
-        HttpRequest request = HttpRequest.newBuilder(uri)
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(uri)
                 .timeout(requestTimeout)
-                .header("User-Agent", userAgent)
-                .GET()
-                .build();
+                .header("User-Agent", userAgent);
+        requestHeaders.forEach(requestBuilder::header);
+        HttpRequest request = requestBuilder.GET().build();
         try {
             HttpResponse<InputStream> response =
                     client.send(request, HttpResponse.BodyHandlers.ofInputStream());
