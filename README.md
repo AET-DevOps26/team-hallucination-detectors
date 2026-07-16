@@ -309,6 +309,6 @@ configured by `authService.passwordResetPageUrl` in the Helm values.
 |---|---|
 | Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints and authentication/onboarding flow |
 | Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, **GenAI integration** (langchain-service providers), client scan/analysis workflows and UI redesign, auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
-| Tim Dreher | **Scanner-service security checks, rescan & comparison + report/PDF exports**, **GenAI fix-prompt hardening/guardrails & semantic RAG knowledge base**, database, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
+| Tim Dreher | **Scanner-service security checks, rescan & comparison + report/PDF exports**, **GenAI fix-prompt hardening/guardrails & semantic RAG knowledge base**, forgot-password email and password-reset flow, database, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
 
-> auth-service is a shared responsibility: Aziz owns the auth-service endpoints (register/login/reset, JWT issuance); Julian owns JWT validation and enforcement in api-service.
+> auth-service is a shared responsibility: Aziz owns the auth-service endpoints (register/login/reset, JWT issuance); Tim owns the forgot-password email and password-reset flow; Julian owns JWT validation and enforcement in api-service.
