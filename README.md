@@ -250,9 +250,8 @@ NSG rules for `22` and `3000` open, and a **static** public IP so the
 
 | Student | Area |
 |---|---|
-| Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints |
-| Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, GenAI integration (langchain-service providers), auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
-| Tim Dreher | scanner-service security checks, rescan & comparison + report/PDF exports, GenAI fix-prompt hardening & RAG knowledge base, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
+| Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints and authentication/onboarding flow |
+| Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, **GenAI integration** (langchain-service providers), client scan/analysis workflows and UI redesign, auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
+| Tim Dreher | **Scanner-service security checks, rescan & comparison + report/PDF exports**, **GenAI fix-prompt hardening/guardrails & semantic RAG knowledge base**, database, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
 
 > auth-service is a shared responsibility: Aziz owns the auth-service endpoints (register/login/reset, JWT issuance); Julian owns JWT validation and enforcement in api-service.
-
