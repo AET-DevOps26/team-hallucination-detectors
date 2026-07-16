@@ -4,6 +4,8 @@ from app.db import KnowledgeChunk
 from app.retrieval import (
     MAX_CONTEXT_CHARS,
     NO_CONTEXT,
+    _embedding_cache,
+    embed_text,
     render_retrieved_context,
     retrieve_context,
 )
@@ -37,6 +39,64 @@ def test_render_retrieved_context_caps_length():
     chunks = [_chunk("Source", "x" * (MAX_CONTEXT_CHARS * 2))]
 
     assert len(render_retrieved_context(chunks)) == MAX_CONTEXT_CHARS
+
+
+def test_render_retrieved_context_drops_whole_chunk_over_budget_instead_of_slicing():
+    """A second chunk that doesn't fully fit is dropped, not cut mid-sentence —
+    a truncated security instruction can invert its own meaning."""
+    first = _chunk("Source A", "x" * (MAX_CONTEXT_CHARS - 30))
+    second = _chunk("Source B", "This whole sentence would be sliced apart.")
+
+    rendered = render_retrieved_context([first, second])
+
+    assert "Source A" in rendered
+    assert "Source B" not in rendered
+
+
+@pytest.mark.anyio
+async def test_embed_text_caches_repeated_queries(monkeypatch):
+    """Finding text comes from a closed set of scanner templates, so repeat
+    queries must not pay the embedding API round-trip again."""
+    _embedding_cache.clear()
+    calls = {"count": 0}
+
+    class FakeEmbeddings:
+        async def aembed_query(self, text):
+            calls["count"] += 1
+            return [0.1, 0.2, 0.3]
+
+    monkeypatch.setattr("app.retrieval._embeddings_client", lambda: FakeEmbeddings())
+
+    first = await embed_text("headers: Missing CSP. No CSP header found.")
+    second = await embed_text("headers: Missing CSP. No CSP header found.")
+    await embed_text("a different finding")
+
+    assert first == second == [0.1, 0.2, 0.3]
+    assert calls["count"] == 2
+    _embedding_cache.clear()
+
+
+@pytest.mark.anyio
+async def test_embed_text_cache_misses_when_embedding_config_changes(monkeypatch):
+    """A cached vector from one embedding model must never be served for
+    another — the key includes the full embedding config."""
+    _embedding_cache.clear()
+    calls = {"count": 0}
+
+    class FakeEmbeddings:
+        async def aembed_query(self, text):
+            calls["count"] += 1
+            return [0.1]
+
+    monkeypatch.setattr("app.retrieval._embeddings_client", lambda: FakeEmbeddings())
+
+    monkeypatch.setattr(settings, "embedding_model_name", "model-a")
+    await embed_text("same text")
+    monkeypatch.setattr(settings, "embedding_model_name", "model-b")
+    await embed_text("same text")
+
+    assert calls["count"] == 2
+    _embedding_cache.clear()
 
 
 @pytest.mark.anyio

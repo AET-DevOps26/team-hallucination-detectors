@@ -25,7 +25,12 @@ async def main() -> None:
 
     async with get_session() as session:
         for entry in KNOWLEDGE_ENTRIES:
-            embedding = await embed_text(entry["content"])
+            # Title + content, matching the shape of the retrieval query
+            # ("check: title. summary" — see retrieve_context): the entry title
+            # names the finding variant, so including it is what lets e.g. a
+            # Referrer-Policy finding rank the Referrer-Policy chunk above the
+            # four other `headers` chunks.
+            embedding = await embed_text(f"{entry['title']}. {entry['content']}")
 
             existing = await session.execute(
                 select(KnowledgeChunk).where(KnowledgeChunk.title == entry["title"])

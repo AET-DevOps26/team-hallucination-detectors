@@ -142,9 +142,13 @@ restricted to the cloud path.
   image — a drop-in replacement for `postgres:16`, same on-disk format). Created
   automatically on startup by `app/db.py::ensure_schema()`, which is a no-op if
   `DATABASE_URL` isn't set.
-- **Content:** `app/knowledge_data.py` — curated entries keyed to VibeShield's
-  scanner check types (`https`, `headers`, `adminPaths`, `secrets`,
-  `sensitiveFiles`, `cookies`).
+- **Content:** `app/knowledge_data.py` — one curated, cited entry per distinct
+  finding *variant* the scanner can emit (24 entries across `https`, `headers`,
+  `adminPaths`, `secrets`, `sensitiveFiles`, `cookies`, `cors`; `crawl` emits no
+  findings). The per-variant granularity is what makes similarity search a real
+  selection — with several candidates per check type, a Referrer-Policy finding
+  retrieves the Referrer-Policy entry, not a generic headers blurb.
+  `tests/test_knowledge_data.py` guards the coverage.
 - **Indexing (offline, manual):** embed and upsert the content once `DATABASE_URL`
   and an embedding key are configured:
 
@@ -155,12 +159,17 @@ restricted to the cloud path.
 
   Safe to re-run — entries are matched by `title` and updated in place, so editing
   `knowledge_data.py` and re-running keeps the table in sync.
-- **Retrieval (per request):** embeds the finding's `check`/`title`/`summary`,
-  then a pgvector cosine-distance search scoped to that `check_type` (falling back
-  to a plain similarity search across everything if that check type has no
-  entries), capped to 2 chunks / 700 characters total — the cap applies to every
-  provider, not just the slow self-hosted one, since it's the total prompt length
-  that matters for CPU prefill time, not which provider answers.
+- **Retrieval (per request):** embeds the finding's `check`/`title`/`summary`
+  (query embeddings are LRU-cached — scanner findings come from a closed set of
+  templates, so repeats are the common case and skip the embedding API entirely),
+  then one pgvector cosine-distance search over the whole corpus with a score
+  *boost* for chunks matching the finding's `check_type` — a preference, not a
+  hard filter, so a clearly closer chunk from a related check (cookie `Secure`
+  flag ↔ https, cors ↔ headers) can still win. Capped to 2 chunks / 1000
+  characters total, packed whole-chunks-only (never sliced mid-sentence) — the
+  cap applies to every provider, not just the slow self-hosted one, since it's
+  the total prompt length that matters for CPU prefill time, not which provider
+  answers.
 - **Failure mode:** any failure here (DB unreachable, no embedding key, query
   error) logs a warning and returns `(none)` rather than failing the fix-prompt
   request — RAG is additive grounding, not a hard dependency.
