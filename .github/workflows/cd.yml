@@ -145,6 +145,34 @@ jobs:
             --set-string secrets.smtpPassword="$SMTP_PASSWORD"
           kubectl get pods -n ge65poj
 
+      - name: Seed the RAG knowledge base
+        run: |
+          # Idempotent (upserts by title in Postgres, safe to run on every
+          # deploy — see services/langchain-service/app/embed_knowledge.py).
+          # Wait for the database Deployment's own rollout first: its
+          # readinessProbe is `pg_isready`, so this is a real DB-readiness
+          # signal (unlike langchain-service's /health, which doesn't check
+          # the DB). Retried on top of that because the exec can still race a
+          # freshly-rolled langchain-service pod. DATABASE_URL /
+          # EMBEDDING_API_KEY are additive config (see app/settings.py), so a
+          # persistent failure here degrades fix-prompt retrieval rather than
+          # failing the deploy.
+          kubectl rollout status deployment/database -n ge65poj --timeout=180s
+          kubectl rollout status deployment/langchain-service -n ge65poj --timeout=180s
+
+          seeded=false
+          for i in $(seq 1 10); do
+            if kubectl exec -n ge65poj deploy/langchain-service -- python -m app.embed_knowledge; then
+              seeded=true
+              break
+            fi
+            echo "embed_knowledge attempt $i/10 failed, retrying in 5s..."
+            sleep 5
+          done
+          if [ "$seeded" = false ]; then
+            echo "::warning::Could not seed the RAG knowledge base after 10 attempts; fix-prompt retrieval will stay disabled until 'kubectl exec -n ge65poj deploy/langchain-service -- python -m app.embed_knowledge' is run manually."
+          fi
+
       - name: Deploy monitoring stack
         run: |
           kubectl create serviceaccount prometheus -n ge65poj --dry-run=client -o yaml | kubectl apply -f -
