@@ -4,6 +4,12 @@ metadata:
   name: database
 spec:
   replicas: 1
+  # Recreate: postgres-data is a ReadWriteOnce PVC and CD (kubectl rollout
+  # status) waits on this Deployment on every deploy; a rolling update would
+  # deadlock waiting for a new pod that can't attach the volume the old pod
+  # still holds (same reasoning as prometheus/alertmanager's Recreate).
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: database
