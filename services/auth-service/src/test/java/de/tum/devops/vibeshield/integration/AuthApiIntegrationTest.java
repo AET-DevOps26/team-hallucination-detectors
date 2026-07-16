@@ -5,12 +5,15 @@ import de.tum.devops.vibeshield.model.PasswordResetToken;
 import de.tum.devops.vibeshield.model.User;
 import de.tum.devops.vibeshield.repository.PasswordResetTokenRepository;
 import de.tum.devops.vibeshield.repository.UserRepository;
+import de.tum.devops.vibeshield.service.PasswordResetEmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -19,6 +22,8 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -45,6 +50,9 @@ class AuthApiIntegrationTest {
 
     @Autowired
     private PasswordResetTokenRepository tokenRepository;
+
+    @MockBean
+    private PasswordResetEmailService passwordResetEmailService;
 
     @BeforeEach
     void clean() {
@@ -172,6 +180,20 @@ class AuthApiIntegrationTest {
         forgotPassword("reset@example.com").andExpect(status().isOk());
 
         assertThat(tokenRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void forgotPassword_mailFailure_keepsGenericResponseAndRollsBackToken() throws Exception {
+        register("reset@example.com", "old-password").andExpect(status().isOk());
+        doThrow(new MailSendException("SMTP unavailable"))
+                .when(passwordResetEmailService).sendResetLink(anyString(), anyString());
+
+        forgotPassword("reset@example.com")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(
+                        "If that email is registered, a password reset link has been sent."));
+
+        assertThat(tokenRepository.findAll()).isEmpty();
     }
 
     @Test

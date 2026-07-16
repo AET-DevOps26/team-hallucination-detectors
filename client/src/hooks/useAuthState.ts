@@ -63,7 +63,7 @@ export function useAuthState({ navigate }: UseAuthStateOptions) {
         setPassword("");
       } else if (authMode === "forgot-password") {
         await forgotPassword(email);
-        setAuthMessage("If that email is registered, a reset link has been sent. Check the service logs for the token (email delivery is not yet configured).");
+        setAuthMessage("If that email is registered, a reset link has been sent. Check your inbox.");
         setAuthMode("login");
       }
     } catch (err: unknown) {

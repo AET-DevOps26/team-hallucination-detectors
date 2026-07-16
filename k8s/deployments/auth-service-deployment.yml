@@ -27,6 +27,26 @@ spec:
             capabilities:
               drop:
                 - ALL
+          env:
+            - name: SPRING_MAIL_HOST
+              value: "CHANGE_ME"
+            - name: SPRING_MAIL_PORT
+              value: "587"
+            - name: SPRING_MAIL_USERNAME
+              value: "CHANGE_ME"
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: SPRING_MAIL_PASSWORD
+            - name: SPRING_MAIL_SMTP_AUTH
+              value: "true"
+            - name: SPRING_MAIL_SMTP_STARTTLS_ENABLE
+              value: "true"
+            - name: PASSWORD_RESET_MAIL_FROM
+              value: "CHANGE_ME"
+            - name: PASSWORD_RESET_PAGE_URL
+              value: "https://ge65poj.stud.k8s.aet.cit.tum.de/reset-password"
           ports:
             - containerPort: 8080
           resources:

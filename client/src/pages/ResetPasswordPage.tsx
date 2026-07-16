@@ -19,6 +19,11 @@ export function ResetPasswordPage({ token, navigate }: ResetPasswordPageProps) {
     e.preventDefault();
     setError("");
 
+    if (!token) {
+      setError("This reset link is invalid. Request a new password reset email.");
+      return;
+    }
+
     if (newPassword !== confirm) {
       setError("Passwords do not match.");
       return;
@@ -52,11 +57,14 @@ export function ResetPasswordPage({ token, navigate }: ResetPasswordPageProps) {
     <main className="mx-auto flex w-full max-w-md flex-col justify-center py-16">
       <div className="animate-slide-up rounded-2xl border border-line bg-surface p-8 shadow-card">
         <h2 className="text-xl font-semibold text-fg">Set a new password</h2>
+        {!token && (
+          <Alert tone="error">This reset link is invalid. Request a new password reset email.</Alert>
+        )}
         <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
           <TextField autoComplete="new-password" label="New password" onChange={setNewPassword} required type="password" value={newPassword} />
           <TextField autoComplete="new-password" label="Confirm new password" onChange={setConfirm} required type="password" value={confirm} />
           {error && <Alert tone="error">{error}</Alert>}
-          <Button fullWidth loading={status === "loading"} size="lg" type="submit">
+          <Button disabled={!token} fullWidth loading={status === "loading"} size="lg" type="submit">
             {status === "loading" ? "Updating..." : "Update password"}
           </Button>
         </form>

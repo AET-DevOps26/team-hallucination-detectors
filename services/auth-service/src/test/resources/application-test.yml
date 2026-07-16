@@ -18,6 +18,9 @@ spring:
         default_schema: auth_service
 
 app:
+  password-reset:
+    mail-from: no-reply@vibeshield.test
+    page-url: http://localhost/reset-password
   jwt:
     secret: integration-test-secret-key-minimum-32-characters!!
     expiration-ms: 3600000

@@ -121,7 +121,12 @@ jobs:
             --set-string secrets.jwtSecret=${{ secrets.APP_JWT_SECRET }} \
             --set-string secrets.dbPassword=${{ secrets.POSTGRES_PASSWORD }} \
             --set-string secrets.openaiApiKey=${{ secrets.OPENAI_API_KEY }} \
-            --set-string secrets.logosApiKey=${{ secrets.LOGOS_API_KEY }}
+            --set-string secrets.logosApiKey=${{ secrets.LOGOS_API_KEY }} \
+            --set-string authService.mail.host=${{ vars.SMTP_HOST }} \
+            --set-string authService.mail.port=${{ vars.SMTP_PORT }} \
+            --set-string authService.mail.username=${{ vars.SMTP_USERNAME }} \
+            --set-string authService.mail.from=${{ vars.PASSWORD_RESET_MAIL_FROM }} \
+            --set-string secrets.smtpPassword=${{ secrets.SMTP_PASSWORD }}
           kubectl get pods -n ge65poj
 
       - name: Deploy monitoring stack

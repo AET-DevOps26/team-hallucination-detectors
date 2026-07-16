@@ -167,7 +167,11 @@ helm upgrade --install vibeshield ./helm/vibeshield -n ge65poj \
   --set-string secrets.jwtSecret=<secret> \
   --set-string secrets.dbPassword=<password> \
   --set-string secrets.openaiApiKey=<key> \
-  --set-string secrets.logosApiKey=<key>
+  --set-string secrets.logosApiKey=<key> \
+  --set-string authService.mail.host=<smtp-host> \
+  --set-string authService.mail.username=<smtp-user> \
+  --set-string authService.mail.from=<sender-address> \
+  --set-string secrets.smtpPassword=<smtp-password>
 
 # Deploy monitoring — apply each manifest individually, same as CD; skip
 # rbac.yml (grants node-level metrics access; course accounts can't apply
@@ -246,4 +250,3 @@ NSG rules for `22` and `3000` open, and a **static** public IP so the
 | Tim Dreher | scanner-service security checks, rescan & comparison + report/PDF exports, GenAI fix-prompt hardening & RAG knowledge base, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
 
 > auth-service is a shared responsibility: Aziz owns the auth-service endpoints (register/login/reset, JWT issuance); Julian owns JWT validation and enforcement in api-service.
-

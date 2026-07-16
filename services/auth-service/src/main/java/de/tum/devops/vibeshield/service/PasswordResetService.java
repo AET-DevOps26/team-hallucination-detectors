@@ -4,8 +4,6 @@ import de.tum.devops.vibeshield.model.PasswordResetToken;
 import de.tum.devops.vibeshield.model.User;
 import de.tum.devops.vibeshield.repository.PasswordResetTokenRepository;
 import de.tum.devops.vibeshield.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,26 +20,25 @@ import java.util.Optional;
 @Service
 public class PasswordResetService {
 
-    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
     private static final Duration TOKEN_TTL = Duration.ofHours(1);
 
     private final PasswordResetTokenRepository tokenRepository;
     private final UserRepository userRepository;
+    private final PasswordResetEmailService emailService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom random = new SecureRandom();
 
-    public PasswordResetService(PasswordResetTokenRepository tokenRepository, UserRepository userRepository) {
+    public PasswordResetService(PasswordResetTokenRepository tokenRepository, UserRepository userRepository,
+                                PasswordResetEmailService emailService) {
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     /**
      * Issues a fresh reset token for the user, invalidating any earlier ones so only the
      * latest request is redeemable.
      *
-     * <p>No email provider is wired up yet (tracked in docs/auth.md known gaps), so the link
-     * is logged rather than emailed — the token mechanics are real, only the delivery channel
-     * is a placeholder.
      */
     @Transactional
     public void requestReset(User user) {
@@ -49,9 +46,7 @@ public class PasswordResetService {
 
         String token = generateToken();
         tokenRepository.save(new PasswordResetToken(user.getId(), token, Instant.now().plus(TOKEN_TTL)));
-
-        log.info("Password reset requested for {}. No email provider is configured (see docs/auth.md); "
-                + "reset token: {}", user.getEmail(), token);
+        emailService.sendResetLink(user.getEmail(), token);
     }
 
     /**
