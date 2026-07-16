@@ -253,15 +253,6 @@ kubectl apply -f k8s/monitoring/grafana-ingress.yml -n ge65poj
 
 Helm charts are in `helm/vibeshield/`. Kubernetes manifests for monitoring are in `k8s/monitoring/`.
 
-> **`k8s/deployments/`, `k8s/services/`, `k8s/secrets/`, `k8s/storage/`,
-> `k8s/hpa.yml`, `k8s/ingress.yml` are reference-only.** They are the earlier
-> raw-manifest form of the app deployment, kept for readability and diagram
-> traceability but **superseded by the Helm chart** — CD never applies them.
-> Do not `kubectl apply` them directly: they reference `:latest` image tags and
-> carry no secret wiring, so applying them yields broken pods. The Helm chart
-> under `helm/vibeshield/` is the only supported app deploy path; only
-> `k8s/monitoring/` is applied outside Helm.
-
 ---
 
 ## Azure VM deployment

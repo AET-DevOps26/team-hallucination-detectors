@@ -55,12 +55,6 @@ export type Analysis = {
   findings: Finding[];
 };
 
-export type TeamMember = {
-  id: string;
-  email: string;
-  role: "Owner" | "Member" | "Pending";
-};
-
 export type NewAnalysisInput = {
   url: string;
   selectedScans: ScanOption[];

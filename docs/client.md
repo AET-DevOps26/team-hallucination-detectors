@@ -58,15 +58,14 @@ There is no separate GenAI base URL — fix-prompt calls use the same `apiClient
 ## Routes
 
 Routing is hand-rolled (`hooks/useAppRouter.ts` + `utils/router.ts`, matched in
-`App.tsx`). There is no route library and no route guards — when there is no session,
-every route except `/reset-password` renders the login page.
+`App.tsx`). There is no route library. Protected analysis routes redirect signed-out
+users to the home page and open the authentication modal.
 
 | Path | Page | Notes |
 |---|---|---|
 | `/login` | `LoginPage` | login / register tabs + forgot-password; fallback when no session |
 | `/reset-password` | `ResetPasswordPage` | public; reads `?token=` from the query |
-| `/` | `LandingRedirect` | → `/profile` if signed in, else `/login` |
-| `/profile` | `ProfilePage` | account info, team members (mock), site/analysis list |
+| `/` | `HomePage` | public landing page; starting a scan while signed out opens the authentication modal |
 | `/analysis` | `AnalysisListPage` | all analyses (scans) |
 | `/analysis/new` | `NewAnalysisPage` | URL + checks + crawl depth + subdomains → trigger scan |
 | `/analysis/:id` | `AnalysisDetailPage` | findings, severity summary, fix prompts, reports, rescan, comparison |
@@ -94,14 +93,15 @@ note it maps API `explanation` → `summary` and `suggestedFix` → `impact`.
   `localStorage` under `vibeshield.session` (`utils/session.ts`).
 - **Attaching:** the `apiClient` request interceptor reads the stored token and sets
   `Authorization: Bearer <token>` on every api-service call.
-- **Protection:** no router guards — `App.tsx` conditionally renders the login page
-  when there's no session. On mount, `useAuthState` validates the stored token via
-  `GET /me` and clears the session on failure (skipped under the dev-auth bypass).
+- **Protection:** no router guards — `App.tsx` redirects protected routes to `/` and
+  opens the authentication modal when there is no session. On mount, `useAuthState`
+  validates the stored token via `GET /me` and clears the session on failure (skipped
+  under the dev-auth bypass).
 
 ## Main flows
 
 - **Register / login** (`useAuthState`): login persists the session and navigates to
-  `/profile`; register then switches to login mode; forgot-password shows a message
+  `/analysis`; register then switches to login mode; forgot-password shows a message
   that email delivery isn't configured (the token is in the service logs).
 - **Add website + scan** (`useAnalysisState.createAnalysis`): `ensureWebsite(url)`
   (reuses an existing site on `WEBSITE_ALREADY_REGISTERED`), then `triggerScan`
@@ -136,8 +136,6 @@ note it maps API `explanation` → `summary` and `suggestedFix` → `impact`.
 
 ## Known gaps
 
-- **Team management has no backend:** `useTeamState` is driven by
-  `constants/mockData.ts`; invites are client-side only.
 - **Finding triage is not persisted:** Open/Fixed/Ignored changes live in memory and
   reset on reload (`useAnalysisState.updateFinding`, cites tickets #22/#14).
 - **Scan config isn't in the read model:** selected checks / crawl depth /
