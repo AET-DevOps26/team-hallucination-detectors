@@ -19,11 +19,11 @@ describe("useAppRouter", () => {
     const { result } = renderHook(() => useAppRouter());
 
     act(() => {
-      result.current.navigate("/profile");
+      result.current.navigate("/analysis");
     });
 
-    expect(result.current.route).toBe("/profile");
-    expect(window.location.pathname).toBe("/profile");
+    expect(result.current.route).toBe("/analysis");
+    expect(window.location.pathname).toBe("/analysis");
   });
 
   it("updates the route when the browser back/forward triggers popstate", () => {
@@ -31,10 +31,10 @@ describe("useAppRouter", () => {
     const { result } = renderHook(() => useAppRouter());
 
     act(() => {
-      window.history.pushState({}, "", "/profile");
+      window.history.pushState({}, "", "/analysis/new");
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
 
-    expect(result.current.route).toBe("/profile");
+    expect(result.current.route).toBe("/analysis/new");
   });
 });

@@ -55,15 +55,14 @@ defaults). Access/error logs go to `/var/log/nginx/*` (errors at `warn`).
 
 ## Kubernetes: ingress instead of this gateway
 
-In the cluster, this compose gateway is replaced by an ingress-nginx **ingress**
-(`k8s/ingress.yml`, `helm/vibeshield/templates/ingress*.yml`). Same logical routing,
+In the cluster, this compose gateway is replaced by ingress-nginx resources under
+`helm/vibeshield/templates/ingress*.yml`. They provide the same logical routing with
 different mechanics:
 
 - Ingress backends target each service on **port 80**; routing to the real container
   port (`8080` / `8000` / `3000`) happens in the k8s Service definitions.
-- The Helm ingress adds the `/openapi.yaml` (`Exact`) route and TLS via cert-manager
+- The main ingress adds the `/openapi.yaml` (`Exact`) route and TLS via cert-manager
   / Let's Encrypt (`secretName: vibeshield-tls`, host from `.Values.global.host`).
-  The static `k8s/ingress.yml` omits `/openapi.yaml` and the rewrites.
 - The `/auth` and `/langchain` **rewrites are split into separate ingress objects**
   (`ingress-auth-rewrite.yml`, `ingress-langchain-rewrite.yml`) using
   `nginx.ingress.kubernetes.io/rewrite-target` + `use-regex`, rather than inline
