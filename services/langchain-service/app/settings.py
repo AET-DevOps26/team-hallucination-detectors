@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     selfhosted_base_url: str = "http://ollama:11434/v1"
     selfhosted_model_name: str = "llama3.2:3b"
 
+    # RAG knowledge base (app/db.py, app/retrieval.py). Deliberately a single,
+    # fixed config independent of which of the three LLM providers above
+    # answers a given request — retrieval is one provider-agnostic step shared
+    # by all three, not a per-provider concern. Empty database_url disables
+    # retrieval entirely; it's additive grounding, not a hard dependency.
+    database_url: str = ""
+    embedding_api_key: str = ""  # falls back to openai_api_key if unset
+    embedding_base_url: str = "https://api.openai.com/v1"
+    embedding_model_name: str = "text-embedding-3-small"
+
     # Shared HMAC secret used to VALIDATE the JWTs the auth-service issues — must
     # match APP_JWT_SECRET across all services (see docs/auth.md). Env: APP_JWT_SECRET.
     # No fallback on purpose: left blank the service fails closed (rejects every
@@ -40,6 +50,10 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @property
+    def resolved_embedding_api_key(self) -> str:
+        return self.embedding_api_key or self.openai_api_key
 
 
 settings = Settings()

@@ -83,6 +83,7 @@ def test_build_fix_prompt_chain_wires_builder_placeholder_and_temperature(monkey
     human_template = chain.first.messages[1].prompt.template
     assert "{builder}" in system_template
     assert "{builder_guidance}" in system_template
+    assert "{retrieved_context}" in system_template
     assert "{title}" in human_template
     assert "{severity}" in human_template
     assert chain.last.temperature == 0.3

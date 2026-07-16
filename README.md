@@ -39,6 +39,8 @@ Browser → Nginx gateway → React client (Vite + TypeScript)
 > [api-service](docs/api.md) · [auth-service](docs/auth.md) ·
 > [scanner-service](docs/scanner.md) · [langchain-service](docs/langchain.md) ·
 > [gateway](docs/gateway.md).
+> UML diagrams (subsystem decomposition, use case, analysis object model) live in
+> [`docs/uml/`](docs/uml/).
 
 ---
 
@@ -114,7 +116,9 @@ Grafana runs at `http://localhost:3001` (admin / admin for local dev).
 
 ## Database schema
 
-Two logical schemas in one PostgreSQL instance. Full ERD: [`docs/db-schema.png`](docs/db-schema.png)
+Two logical schemas in one PostgreSQL instance, plus an optional third for the
+GenAI RAG knowledge base (see below). Full ERD (auth/api only):
+[`docs/db-schema.png`](docs/db-schema.png)
 
 ![ERD](docs/db-schema.png)
 
@@ -132,6 +136,15 @@ Two logical schemas in one PostgreSQL instance. Full ERD: [`docs/db-schema.png`]
 | `findings` | `id`, `scan_id`, `check_type`, `title`, `severity`, `affected`, `explanation`, `suggested_fix`, `status` |
 
 Schema is managed by Flyway migrations in each service (`services/*/src/main/resources/db/migration/`).
+
+**`langchain_service` schema (optional, RAG only)** — created automatically on
+startup when `DATABASE_URL` is set; the service runs fine without it.
+| Table | Key columns |
+|---|---|
+| `fix_prompt_knowledge` | `id`, `check_type`, `source`, `title`, `content`, `embedding vector(1536)` |
+
+See [`docs/langchain.md`](docs/langchain.md#rag-knowledge-base) for how this is
+populated and used.
 
 ---
 

@@ -1,4 +1,5 @@
 from app.chains import render_builder_guidance
+from app.retrieval import NO_CONTEXT
 from app.settings import settings
 
 
@@ -147,6 +148,7 @@ def test_fix_prompt_returns_generated_prompt(client, monkeypatch):
         "impact": "Increases XSS blast radius.",
         "builder": "Cursor",
         "builder_guidance": render_builder_guidance("Cursor"),
+        "retrieved_context": NO_CONTEXT,
     }
 
 
@@ -172,6 +174,7 @@ def test_fix_prompt_fills_defaults_for_optional_fields(client, monkeypatch):
         "impact": "n/a",
         "builder": "Generic",
         "builder_guidance": render_builder_guidance("Generic"),
+        "retrieved_context": NO_CONTEXT,
     }
 
 
@@ -214,6 +217,41 @@ def test_fix_prompt_normalizes_unknown_builder_to_generic(client, monkeypatch):
 
     assert response.status_code == 200
     assert captured["builder"] == "Generic"
+
+
+def test_fix_prompt_passes_retrieved_context_to_the_chain(client, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        "app.main._fix_prompt_chain",
+        lambda provider: _fake_chain_returning(CLEAN_PROMPT, captured),
+    )
+
+    async def fake_retrieve_context(check, title, summary):
+        return "- [OWASP A05:2021] Some grounding snippet."
+
+    monkeypatch.setattr("app.main.retrieve_context", fake_retrieve_context)
+
+    response = client.post(
+        "/fix-prompt", json={"title": "Missing headers", "severity": "high"}
+    )
+
+    assert response.status_code == 200
+    assert captured["retrieved_context"] == "- [OWASP A05:2021] Some grounding snippet."
+
+
+def test_fix_prompt_defaults_retrieved_context_when_rag_is_unconfigured(client, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        "app.main._fix_prompt_chain",
+        lambda provider: _fake_chain_returning(CLEAN_PROMPT, captured),
+    )
+
+    response = client.post(
+        "/fix-prompt", json={"title": "Missing headers", "severity": "high"}
+    )
+
+    assert response.status_code == 200
+    assert captured["retrieved_context"] == NO_CONTEXT
 
 
 def test_fix_prompt_regenerates_once_when_output_fails_validation(client, monkeypatch):

@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Any, Optional
 
@@ -19,6 +20,7 @@ from app.chains import (
     build_fix_prompt_chain,
     render_builder_guidance,
 )
+from app.db import ensure_schema
 from app.guardrails import (
     MAX_LONG_FIELD_LENGTH,
     MAX_SHORT_FIELD_LENGTH,
@@ -30,12 +32,21 @@ from app.guardrails import (
     validate_title,
 )
 from app.auth import Unauthorized, require_auth, unauthorized_response
+from app.retrieval import retrieve_context
 from app.settings import settings
 
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    """No-op when DATABASE_URL isn't configured; see app.db.ensure_schema."""
+    await ensure_schema()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=_lifespan)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
@@ -222,6 +233,9 @@ async def fix_prompt(request: FixPromptRequest, _: None = Depends(require_auth))
     markdown fences, ...) is regenerated once, and only surfaced as an error
     if it fails validation twice in a row.
     """
+    retrieved_context = await retrieve_context(
+        check=request.check, title=request.title, summary=request.summary
+    )
     inputs = {
         "title": request.title,
         "severity": request.severity,
@@ -231,6 +245,7 @@ async def fix_prompt(request: FixPromptRequest, _: None = Depends(require_auth))
         "impact": request.impact or "n/a",
         "builder": request.builder,
         "builder_guidance": render_builder_guidance(request.builder),
+        "retrieved_context": retrieved_context,
     }
     finding_context = " ".join(
         [request.title, request.check, request.summary, request.impact]
