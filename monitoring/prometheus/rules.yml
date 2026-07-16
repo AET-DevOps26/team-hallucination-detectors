@@ -45,11 +45,16 @@ groups:
       # histogram http_request_duration_highr_seconds_bucket (buckets to 60s);
       # the low-resolution http_request_duration_seconds tops out at 1s, so
       # quantiles computed from it can never exceed 1.0.
+      #
+      # Aggregate `by (job)` even though the selector pins a single job: the
+      # fired alert must carry the job label so Alertmanager can group on it
+      # and a critical ServiceDown{job="langchain-service"} can inhibit these
+      # warnings (its inhibit rule matches on `equal: [job]`).
       - alert: GenAIHighErrorRate
         expr: |
-          sum(rate(http_requests_total{job="langchain-service",status="5xx"}[5m]))
+          sum(rate(http_requests_total{job="langchain-service",status="5xx"}[5m])) by (job)
           /
-          sum(rate(http_requests_total{job="langchain-service"}[5m]))
+          sum(rate(http_requests_total{job="langchain-service"}[5m])) by (job)
           > 0.05
         for: 2m
         labels:
@@ -61,7 +66,7 @@ groups:
       - alert: GenAISlowResponseTime
         expr: |
           histogram_quantile(0.95,
-            sum(rate(http_request_duration_highr_seconds_bucket{job="langchain-service"}[5m])) by (le)
+            sum(rate(http_request_duration_highr_seconds_bucket{job="langchain-service"}[5m])) by (job, le)
           ) > 10
         for: 5m
         labels:
