@@ -2,7 +2,7 @@ import logging
 from functools import lru_cache
 from typing import Any, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -29,6 +29,7 @@ from app.guardrails import (
     validate_fix_prompt,
     validate_title,
 )
+from app.auth import Unauthorized, require_auth, unauthorized_response
 from app.settings import settings
 
 
@@ -149,6 +150,12 @@ async def handle_validation_error(_: Request, exc: RequestValidationError) -> JS
     return _error(422, "VALIDATION_ERROR", "Request validation failed.", errors)
 
 
+@app.exception_handler(Unauthorized)
+async def handle_unauthorized(_: Request, exc: Unauthorized) -> JSONResponse:
+    """Renders a failed JWT check in the unified schema with its specific code."""
+    return unauthorized_response(exc)
+
+
 @app.exception_handler(StarletteHTTPException)
 async def handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Wraps explicit HTTP errors (e.g. 404) in the unified schema."""
@@ -195,7 +202,7 @@ def health():
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, _: None = Depends(require_auth)):
     try:
         result = await _chat_chain(request.provider).ainvoke({"message": request.message})
     except Exception:
@@ -207,7 +214,7 @@ async def chat(request: ChatRequest):
 
 
 @app.post("/fix-prompt", response_model=FixPromptResponse)
-async def fix_prompt(request: FixPromptRequest):
+async def fix_prompt(request: FixPromptRequest, _: None = Depends(require_auth)):
     """Generate a ready-to-paste fix prompt for a single finding (core GenAI feature).
 
     The output is validated against app.guardrails before it's returned; a

@@ -58,6 +58,11 @@ spec:
               value: "{{ .Values.langchainService.selfhostedModelName }}"
             - name: SELFHOSTED_API_KEY
               value: "{{ .Values.langchainService.selfhostedApiKey }}"
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: APP_JWT_SECRET
             - name: OTEL_SERVICE_NAME
               value: "langchain-service"
             # gRPC, not http/protobuf: the Python OTLP HTTP exporter silently

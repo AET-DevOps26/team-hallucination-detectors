@@ -16,8 +16,12 @@ gateway), and **self-hosted** (a local Ollama model we run ourselves).
 > it is *not* proxied by the [api-service](api.md). The api-service only stores the
 > plain-language `suggestedFix` text that the client sends here as input.
 
-> **Stateless and unauthenticated.** The service has no database and no JWT check on
-> any endpoint; it relies on being unpublished (reachable only via the gateway).
+> **Stateless.** The service has no database. Its user-facing endpoints (`/chat`,
+> `/fix-prompt`) require a valid JWT — the same shared-secret HMAC token the
+> auth-service issues and the Java services validate (see [auth.md](auth.md)) —
+> so the GenAI capability isn't open to the internet even though it's reachable
+> through the gateway. `/health` and `/metrics` stay unauthenticated for probes
+> and Prometheus scraping.
 
 ## Stack
 
@@ -53,7 +57,8 @@ returns a clean `503 PROVIDER_NOT_CONFIGURED` rather than failing to boot.
 
 ## Endpoints
 
-All endpoints are on the root app (no routers) and require **no authentication**.
+All endpoints are on the root app (no routers). `/chat` and `/fix-prompt` require a
+valid `Authorization: Bearer <jwt>` header; `/health` and `/metrics` are public.
 
 | Method | Path | Body | Success |
 |---|---|---|---|
@@ -183,5 +188,5 @@ templated through Helm values. The self-hosted provider points at the in-cluster
   Logos — see [client.md](client.md).)
 - **Env-var naming mismatch** for the OpenAI model: internal `MODEL_NAME` vs.
   compose/`.env` indirection `LANGCHAIN_MODEL_NAME`.
-- **No authentication** on any endpoint — the service relies entirely on being
-  unpublished and gateway-only.
+- **JWT-protected** user endpoints (`/chat`, `/fix-prompt`) via the shared
+  `APP_JWT_SECRET`; `/health` and `/metrics` remain public for probes/scraping.
