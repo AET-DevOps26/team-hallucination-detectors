@@ -39,6 +39,8 @@ Browser → Nginx gateway → React client (Vite + TypeScript)
 > [api-service](docs/api.md) · [auth-service](docs/auth.md) ·
 > [scanner-service](docs/scanner.md) · [langchain-service](docs/langchain.md) ·
 > [gateway](docs/gateway.md).
+> UML diagrams (subsystem decomposition, use case, analysis object model) live in
+> [`docs/uml/`](docs/uml/).
 
 ---
 
