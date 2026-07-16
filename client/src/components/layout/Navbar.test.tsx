@@ -63,7 +63,7 @@ describe("Navbar", () => {
       <Navbar
         navigate={vi.fn()}
         onLogout={vi.fn()}
-        route="/profile"
+        route="/analysis"
         session={session}
         theme="light"
         onToggleTheme={vi.fn()}

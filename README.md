@@ -66,6 +66,42 @@ docker compose up --build     # starts all services + gateway on http://localhos
 
 The gateway exposes everything on port `3000`. API docs are at `http://localhost:3000/api/swagger-ui.html`.
 
+### Running with or without the self-hosted model (Ollama)
+
+The GenAI service offers three LLM providers — **OpenAI** (cloud), **TUM Logos**
+(course gateway), and **Self-hosted (Ollama)** (a local model we run ourselves).
+The Ollama runtime is heavy (multi-GB model download, slow CPU inference), so it's
+gated behind a Docker Compose [profile](https://docs.docker.com/compose/how-tos/profiles/)
+named `ollama` and is **off by default**.
+
+**Without Ollama (default):**
+
+```bash
+docker compose up --build
+```
+
+Starts every service *except* the `ollama` container. The app is fully functional
+and the **OpenAI** and **TUM Logos** providers work normally. Only the
+**Self-hosted (Ollama)** provider has no backend in this mode — selecting it in the
+UI fails (the langchain-service can't reach `http://ollama:11434` and returns a
+`500`), so leave the provider dropdown on OpenAI or TUM Logos. To make that failure
+a clean `503 PROVIDER_NOT_CONFIGURED` instead, blank `SELFHOSTED_API_KEY` in `.env`.
+
+**With Ollama:**
+
+```bash
+docker compose --profile ollama up --build      # or: COMPOSE_PROFILES=ollama docker compose up --build
+```
+
+Also starts the `ollama` container. On **first boot** it pulls the model
+(`SELFHOSTED_MODEL_NAME`, default `llama3.2:3b`, ~2 GB) and prewarms it into memory,
+which takes a few minutes — later starts are fast because the weights are cached in
+the `ollama_models` volume. Once it's up, the **Self-hosted (Ollama)** provider works.
+CPU-only inference is slow, so keep to small models (1B–3B).
+
+> Combine profiles with the monitoring overlay if you need both:
+> `docker compose --profile ollama -f docker-compose.yml -f docker-compose.monitoring.yml up --build`
+
 To include the monitoring stack (Prometheus, Grafana, Loki):
 
 ```bash
@@ -228,15 +264,6 @@ kubectl apply -f k8s/monitoring/grafana-ingress.yml -n ge65poj
 
 Helm charts are in `helm/vibeshield/`. Kubernetes manifests for monitoring are in `k8s/monitoring/`.
 
-> **`k8s/deployments/`, `k8s/services/`, `k8s/secrets/`, `k8s/storage/`,
-> `k8s/hpa.yml`, `k8s/ingress.yml` are reference-only.** They are the earlier
-> raw-manifest form of the app deployment, kept for readability and diagram
-> traceability but **superseded by the Helm chart** — CD never applies them.
-> Do not `kubectl apply` them directly: they reference `:latest` image tags and
-> carry no secret wiring, so applying them yields broken pods. The Helm chart
-> under `helm/vibeshield/` is the only supported app deploy path; only
-> `k8s/monitoring/` is applied outside Helm.
-
 ---
 
 ## Azure VM deployment
@@ -261,9 +288,8 @@ NSG rules for `22` and `3000` open, and a **static** public IP so the
 
 | Student | Area |
 |---|---|
-| Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints |
-| Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, GenAI integration (langchain-service providers), auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
-| Tim Dreher | scanner-service security checks, rescan & comparison + report/PDF exports, GenAI fix-prompt hardening & RAG knowledge base, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
+| Aziz Chouria | DevOps & infrastructure: CI/CD pipelines (GitHub Actions), Kubernetes/Helm deployment, Azure (Terraform + Ansible), monitoring stack (Prometheus + Grafana + Loki), security hardening; auth-service register/login/JWT/password-reset endpoints and authentication/onboarding flow |
+| Julian Jungnitz | API design (OpenAPI contract + codegen), scanner-service core & scan lifecycle/worker, **GenAI integration** (langchain-service providers), client scan/analysis workflows and UI redesign, auth-service JWT validation in api-service, autoscaling & health probes, UML diagrams |
+| Tim Dreher | **Scanner-service security checks, rescan & comparison + report/PDF exports**, **GenAI fix-prompt hardening/guardrails & semantic RAG knowledge base**, database, cross-stack test suites (JUnit + pytest + Vitest), gateway resilience |
 
 > auth-service is a shared responsibility: Aziz owns the auth-service endpoints (register/login/reset, JWT issuance); Julian owns JWT validation and enforcement in api-service.
-
