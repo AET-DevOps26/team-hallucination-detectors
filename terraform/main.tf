@@ -1,7 +1,7 @@
 # 1. Create a Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = "team-project-rg"
-  location = "Sweden Central" 
+  location = "Sweden Central"
 }
 
 # 2. Create a Virtual Network and Subnet
@@ -28,7 +28,7 @@ resource "azurerm_public_ip" "public_ip" {
   sku                 = "Standard"
 }
 
-# 4. Create a Network Security Group (Open Ports 22, 80, 443, 8080)
+# 4. Create a Network Security Group for SSH and the public gateway
 resource "azurerm_network_security_group" "nsg" {
   name                = "team-nsg"
   location            = azurerm_resource_group.rg.location
@@ -45,15 +45,15 @@ resource "azurerm_network_security_group" "nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
-  
+
   security_rule {
-    name                       = "HTTP-HTTPS-Backend"
+    name                       = "Gateway"
     priority                   = 1010
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_ranges = ["80", "443", "3000", "8000", "8080", "8081"]
+    destination_port_ranges    = ["3000", "3443"]
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
