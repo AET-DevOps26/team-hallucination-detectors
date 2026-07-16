@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: ge65poj
+  labels:
+    app: alertmanager
+spec:
+  replicas: 1
+  # Recreate: the data volume is a ReadWriteOnce PVC and CD restarts this
+  # Deployment on every deploy; a rolling update would deadlock waiting for a
+  # new pod that can't attach the volume the old pod still holds.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      # Alertmanager never talks to the Kubernetes API.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.27.0
+          args:
+            - --config.file=/etc/alertmanager/alertmanager.yml
+            - --storage.path=/alertmanager
+            # external-url makes generated links in the UI resolve correctly
+            # behind the ingress host.
+            - --web.external-url=https://ge65poj-alertmanager.stud.k8s.aet.cit.tum.de
+          ports:
+            - containerPort: 9093
+          securityContext:
+            allowPrivilegeEscalation: false
+            # All mutable state lives on the /alertmanager PVC; the config
+            # mount is read-only anyway, so the root FS can be locked down.
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager
+            - name: data
+              mountPath: /alertmanager
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9093
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+        # PVC (not emptyDir) so silences and notification-dedup state survive
+        # restarts — CD restarts this pod on every deploy.
+        - name: data
+          persistentVolumeClaim:
+            claimName: alertmanager-data

@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alertmanager-ingress
+  namespace: ge65poj
+  annotations:
+    cert-manager.io/issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ge65poj-alertmanager.stud.k8s.aet.cit.tum.de
+      secretName: alertmanager-tls
+  rules:
+    - host: ge65poj-alertmanager.stud.k8s.aet.cit.tum.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: alertmanager
+                port:
+                  number: 9093

@@ -1,9 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getScanComparison } from "../api/scans";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { MiniMetric } from "../components/ui/Metric";
 import { Analysis } from "../types/domain";
 import { getSeverityCounts } from "../utils/analysis";
+import {
+  ScanTransition,
+  SeverityCount,
+  summarizeScanTransition,
+} from "../utils/scanTransition";
 
 type AnalysisListPageProps = {
   analyses: Analysis[];
@@ -150,6 +156,7 @@ function ScanRow({
   const openCount = scan.findings.filter(
     (finding) => finding.status === "Open",
   ).length;
+  const transition = useScanTransition(scan);
 
   return (
     <li>
@@ -158,14 +165,19 @@ function ScanRow({
         onClick={() => navigate(`/analysis/${scan.id}`)}
         type="button"
       >
-        <div className="flex min-w-0 items-center gap-3">
-          {inProgress && (
-            <Badge tone="primary">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-              {scan.status}
-            </Badge>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-3">
+            {inProgress && (
+              <Badge tone="primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                {scan.status}
+              </Badge>
+            )}
+            <span className="truncate text-sm text-fg">{scan.createdAt}</span>
+          </div>
+          {!inProgress && transition && (
+            <ScanTransitionSummary transition={transition} />
           )}
-          <span className="truncate text-sm text-fg">{scan.createdAt}</span>
         </div>
         <div className="flex shrink-0 items-center gap-3 text-sm text-muted">
           <span>{openCount} open</span>
@@ -174,6 +186,75 @@ function ScanRow({
       </button>
     </li>
   );
+}
+
+/**
+ * Loads the scan's comparison with the previous completed scan and reduces it to
+ * the fixed / newly introduced deltas. Fetches per row (mirroring the detail
+ * page) because the list's findings are lazy-loaded, so the diff can't be
+ * computed from in-memory findings. Only completed scans have a comparison.
+ */
+function useScanTransition(scan: Analysis): ScanTransition | undefined {
+  const [transition, setTransition] = useState<ScanTransition>();
+
+  useEffect(() => {
+    if (scan.status !== "Completed") {
+      setTransition(undefined);
+      return;
+    }
+    let cancelled = false;
+    getScanComparison(Number(scan.id))
+      .then((data) => {
+        if (!cancelled) {
+          setTransition(summarizeScanTransition(data));
+        }
+      })
+      .catch(() => {
+        // A failed comparison just hides the delta line; the time still shows.
+        if (!cancelled) {
+          setTransition(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scan.id, scan.status]);
+
+  return transition;
+}
+
+/** The "Fixed 2 Medium · New 1 Low" delta line beneath a scan's timestamp. */
+function ScanTransitionSummary({ transition }: { transition: ScanTransition }) {
+  if (transition.kind === "baseline") {
+    return (
+      <span className="text-xs text-muted">Baseline scan · nothing earlier to compare</span>
+    );
+  }
+  if (transition.kind === "no-change") {
+    return <span className="text-xs text-muted">No change since the previous scan</span>;
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+      {transition.fixed.length > 0 && (
+        <span className="font-medium text-emerald-600 dark:text-emerald-400">
+          Fixed {formatSeverityCounts(transition.fixed)}
+        </span>
+      )}
+      {transition.fixed.length > 0 && transition.introduced.length > 0 && (
+        <span aria-hidden="true" className="text-muted">·</span>
+      )}
+      {transition.introduced.length > 0 && (
+        <span className="font-medium text-red-600 dark:text-red-400">
+          New {formatSeverityCounts(transition.introduced)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function formatSeverityCounts(counts: SeverityCount[]): string {
+  return counts.map(({ severity, count }) => `${count} ${severity}`).join(", ");
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {

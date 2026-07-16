@@ -150,6 +150,11 @@ jobs:
           kubectl apply -f k8s/monitoring/prometheus-pvc.yml
           kubectl apply -f k8s/monitoring/prometheus-deployment.yml
           kubectl apply -f k8s/monitoring/prometheus-service.yml
+          kubectl apply -f k8s/monitoring/alertmanager-configmap.yml
+          kubectl apply -f k8s/monitoring/alertmanager-pvc.yml
+          kubectl apply -f k8s/monitoring/alertmanager-deployment.yml
+          kubectl apply -f k8s/monitoring/alertmanager-service.yml
+          kubectl apply -f k8s/monitoring/alertmanager-ingress.yml
           kubectl apply -f k8s/monitoring/loki-configmap.yml
           kubectl apply -f k8s/monitoring/loki-pvc.yml
           kubectl apply -f k8s/monitoring/loki-deployment.yml
@@ -171,3 +176,15 @@ jobs:
           kubectl apply -f k8s/monitoring/grafana-service.yml
           kubectl apply -f k8s/monitoring/grafana-ingress.yml
           kubectl get pods -n ge65poj -l 'app in (prometheus,grafana,loki,tempo)'
+
+      # `kubectl apply` on a ConfigMap does not make Prometheus or Alertmanager
+      # re-read their config — they only reload on SIGHUP / restart, and the
+      # Deployments above are usually unchanged (a no-op apply). Restart both so
+      # a config change merged to main actually takes effect; a fresh pod mounts
+      # the latest ConfigMap immediately, avoiding the kubelet sync-window race
+      # that a POST /-/reload right after apply would hit.
+      - name: Roll Prometheus & Alertmanager to pick up config
+        run: |
+          kubectl rollout restart deployment/prometheus deployment/alertmanager -n ge65poj
+          kubectl rollout status deployment/prometheus -n ge65poj --timeout=180s
+          kubectl rollout status deployment/alertmanager -n ge65poj --timeout=180s
