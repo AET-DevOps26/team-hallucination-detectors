@@ -1,7 +1,34 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AnalysisListPage } from "./AnalysisListPage";
 import type { Analysis } from "../types/domain";
+import { getScanComparison } from "../api/scans";
+import type { ApiScanComparison } from "../api/scans";
+
+vi.mock("../api/scans", () => ({
+  getScanComparison: vi.fn(),
+}));
+
+const mockGetScanComparison = vi.mocked(getScanComparison);
+
+// Rows fetch a comparison for every completed scan; default to "no previous
+// scan" so tests that don't care about the delta line stay quiet.
+function comparison(overrides: Partial<ApiScanComparison> = {}): ApiScanComparison {
+  return {
+    scanId: 42,
+    comparable: false,
+    message: "",
+    summary: { fixed: 0, stillPresent: 0, newlyIntroduced: 0 },
+    findings: [],
+    actionPlan: [],
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  mockGetScanComparison.mockReset();
+  mockGetScanComparison.mockResolvedValue(comparison());
+});
 
 const navigate = vi.fn();
 
@@ -91,5 +118,56 @@ describe("AnalysisListPage", () => {
     expect(screen.getByText(/1 open/i)).toBeInTheDocument();
     fireEvent.click(header);
     expect(screen.queryByText(/1 open/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the fixed / newly introduced delta for a completed scan", async () => {
+    mockGetScanComparison.mockResolvedValue(
+      comparison({
+        comparable: true,
+        findings: [
+          {
+            changeStatus: "Fixed",
+            severity: "Medium",
+            check: "headers",
+            title: "Missing CSP header",
+            affected: "https://shop.example.org/",
+            suggestedFix: "Add a CSP.",
+            effort: { level: "Low", estimate: "1-2 hours" },
+          },
+          {
+            changeStatus: "Fixed",
+            severity: "Medium",
+            check: "headers",
+            title: "Missing HSTS header",
+            affected: "https://shop.example.org/",
+            suggestedFix: "Add HSTS.",
+            effort: { level: "Low", estimate: "1-2 hours" },
+          },
+          {
+            changeStatus: "Newly introduced",
+            severity: "Low",
+            check: "cookies",
+            title: "Cookie without SameSite",
+            affected: "https://shop.example.org/",
+            suggestedFix: "Set SameSite.",
+            effort: { level: "Low", estimate: "1-2 hours" },
+          },
+        ],
+      }),
+    );
+
+    render(<AnalysisListPage analyses={[analysis]} navigate={navigate} />);
+
+    expect(await screen.findByText(/Fixed 2 Medium/)).toBeInTheDocument();
+    expect(screen.getByText(/New 1 Low/)).toBeInTheDocument();
+    expect(mockGetScanComparison).toHaveBeenCalledWith(42);
+  });
+
+  it("labels the first scan of a site as a baseline", async () => {
+    mockGetScanComparison.mockResolvedValue(comparison({ comparable: false }));
+    render(<AnalysisListPage analyses={[analysis]} navigate={navigate} />);
+    await waitFor(() =>
+      expect(screen.getByText(/baseline scan/i)).toBeInTheDocument(),
+    );
   });
 });
