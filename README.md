@@ -129,7 +129,9 @@ Deployed to the `ge65poj` namespace alongside the app.
   deduplicates them and shows them at https://ge65poj-alertmanager.stud.k8s.aet.cit.tum.de.
   Delivery is UI-only by design (no external SMTP/Slack channel provisioned); the receiver
   in `k8s/monitoring/alertmanager-configmap.yml` is ready to take an email/Slack/webhook
-  integration if one is added later.
+  integration if one is added later. Silences and notification state persist on a PVC,
+  and CD restarts Prometheus + Alertmanager after applying their ConfigMaps so config
+  changes actually take effect (neither reloads a mounted file on its own).
 
 ---
 

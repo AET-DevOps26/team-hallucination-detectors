@@ -7,6 +7,11 @@ metadata:
     app: alertmanager
 spec:
   replicas: 1
+  # Recreate: the data volume is a ReadWriteOnce PVC and CD restarts this
+  # Deployment on every deploy; a rolling update would deadlock waiting for a
+  # new pod that can't attach the volume the old pod still holds.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: alertmanager
@@ -58,5 +63,8 @@ spec:
         - name: config
           configMap:
             name: alertmanager-config
+        # PVC (not emptyDir) so silences and notification-dedup state survive
+        # restarts — CD restarts this pod on every deploy.
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: alertmanager-data
