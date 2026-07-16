@@ -157,8 +157,21 @@ jobs:
           # EMBEDDING_API_KEY are additive config (see app/settings.py), so a
           # persistent failure here degrades fix-prompt retrieval rather than
           # failing the deploy.
-          kubectl rollout status deployment/database -n ge65poj --timeout=180s
-          kubectl rollout status deployment/langchain-service -n ge65poj --timeout=180s
+          #
+          # The waits are deliberately non-fatal (this step runs under bash -e,
+          # so a bare timeout would fail the whole deploy AND skip the
+          # monitoring deploy below): seeding is best-effort by design, and a
+          # stuck rollout still gets surfaced via the warning. The database
+          # wait gets 300s because a pod resolving the pre-Recreate RWO-PVC
+          # rollout deadlock (see database-deployment.yml) can sit in
+          # CrashLoopBackOff for up to ~5 min of accumulated backoff before
+          # its next restart attempt.
+          if ! kubectl rollout status deployment/database -n ge65poj --timeout=300s; then
+            echo "::warning::database rollout not complete after 300s; attempting to seed anyway."
+          fi
+          if ! kubectl rollout status deployment/langchain-service -n ge65poj --timeout=180s; then
+            echo "::warning::langchain-service rollout not complete after 180s; attempting to seed anyway."
+          fi
 
           seeded=false
           for i in $(seq 1 10); do
