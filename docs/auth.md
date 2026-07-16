@@ -74,6 +74,13 @@ configure the SMTP host, credentials, sender address, and public reset-page URL:
 | Sender address | `PASSWORD_RESET_MAIL_FROM` | `no-reply@vibeshield.local` |
 | Public reset page | `PASSWORD_RESET_PAGE_URL` | `http://localhost:3000/reset-password` |
 
+For GitHub deployments, configure repository variables `SMTP_HOST`,
+`SMTP_USERNAME`, and `PASSWORD_RESET_MAIL_FROM`, plus the `SMTP_PASSWORD`
+repository secret. `SMTP_PORT` defaults to `587`. Azure VM deployments may set
+`AZURE_PUBLIC_URL`; otherwise the workflow builds the public reset URL from
+`AZURE_PUBLIC_IP` and port `3000`. Both deployment workflows fail fast if the
+required SMTP settings are missing.
+
 Interactive API docs (when running): `http://localhost:8081/swagger-ui.html`
 (OpenAPI JSON at `/v3/api-docs`).
 

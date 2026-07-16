@@ -231,13 +231,26 @@ merge to `main` via `.github/workflows/deploy.yml`, which SSHes in, copies
 the repo, writes a `.env` from secrets, and runs `docker compose up -d --build`.
 
 Required GitHub Actions secrets: `AZURE_PUBLIC_IP`, `AZURE_USER`,
-`AZURE_PRIVATE_KEY`, `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `OPENAI_API_KEY`.
+`AZURE_PRIVATE_KEY`, `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `OPENAI_API_KEY`,
+and `SMTP_PASSWORD`.
+
+Password-reset email also requires the repository variables `SMTP_HOST`,
+`SMTP_USERNAME`, and `PASSWORD_RESET_MAIL_FROM`. `SMTP_PORT` is optional and
+defaults to `587`. Set `AZURE_PUBLIC_URL` to the externally reachable origin
+(for example `https://vibeshield.example.org`); when omitted, reset links use
+`http://<AZURE_PUBLIC_IP>:3000`. The workflow fails before deployment when
+required SMTP settings are absent instead of deploying a reset flow that
+cannot deliver mail.
 
 The VM itself isn't provisioned by CI — it's a standalone Azure VM someone
 sets up once (see the TUM Azure4Students guide), matching the port mapping
 in `docker-compose.yml` (`3000:80`, `3443:443` on the gateway) with inbound
 NSG rules for `22` and `3000` open, and a **static** public IP so the
 `AZURE_PUBLIC_IP` secret doesn't silently go stale on a VM restart.
+
+The Kubernetes Helm deployment uses the same SMTP variables and secret and
+fails early if they are missing. Its reset links point to the public hostname
+configured by `authService.passwordResetPageUrl` in the Helm values.
 
 ---
 
