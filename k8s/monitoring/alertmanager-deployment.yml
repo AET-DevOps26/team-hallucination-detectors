@@ -20,6 +20,8 @@ spec:
       labels:
         app: alertmanager
     spec:
+      # Alertmanager never talks to the Kubernetes API.
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -38,6 +40,9 @@ spec:
             - containerPort: 9093
           securityContext:
             allowPrivilegeEscalation: false
+            # All mutable state lives on the /alertmanager PVC; the config
+            # mount is read-only anyway, so the root FS can be locked down.
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
