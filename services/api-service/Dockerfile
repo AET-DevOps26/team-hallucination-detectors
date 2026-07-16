@@ -6,7 +6,7 @@ COPY src ./src
 RUN gradle --no-daemon clean bootJar -x test
 # Zero-code distributed tracing: the OTel Java agent auto-instruments Spring MVC
 # and outgoing HTTP clients, propagating W3C trace context across service calls.
-RUN wget -q -O otel-agent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.9.0/opentelemetry-javaagent.jar
+RUN wget -q -O otel-agent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.29.0/opentelemetry-javaagent.jar
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 RUN addgroup -S app && adduser -S -G app app
