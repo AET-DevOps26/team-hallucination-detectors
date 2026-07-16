@@ -60,9 +60,26 @@ token issued earlier to the same user, so only the most recent request is ever r
 `/forgot-password` always returns the same `200` response regardless of whether the email is
 registered, so it can't be used to enumerate accounts.
 
-**Known gap:** no email provider is wired up yet — the reset link is logged
-(`PasswordResetService#requestReset`) instead of emailed. The token mechanics are real; only
-the delivery channel is a placeholder pending a provider decision.
+The auth service sends the reset link through SMTP. Docker Compose includes Mailpit for local
+development; its inbox is available at `http://localhost:8025`. Deployed environments must
+configure the SMTP host, credentials, sender address, and public reset-page URL:
+
+| Property | Environment variable | Local default |
+|---|---|---|
+| SMTP host | `SPRING_MAIL_HOST` | `mailpit` in Compose |
+| SMTP port | `SPRING_MAIL_PORT` | `1025` |
+| SMTP username/password | `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | blank |
+| SMTP authentication | `SPRING_MAIL_SMTP_AUTH` | `false` |
+| STARTTLS | `SPRING_MAIL_SMTP_STARTTLS_ENABLE` | `false` |
+| Sender address | `PASSWORD_RESET_MAIL_FROM` | `no-reply@vibeshield.local` |
+| Public reset page | `PASSWORD_RESET_PAGE_URL` | `http://localhost:3000/reset-password` |
+
+For GitHub deployments, configure repository variables `SMTP_HOST`,
+`SMTP_USERNAME`, and `PASSWORD_RESET_MAIL_FROM`, plus the `SMTP_PASSWORD`
+repository secret. `SMTP_PORT` defaults to `587`. Azure VM deployments may set
+`AZURE_PUBLIC_URL`; otherwise the workflow builds the public reset URL from
+`AZURE_PUBLIC_IP` and port `3000`. Both deployment workflows fail fast if the
+required SMTP settings are missing.
 
 Interactive API docs (when running): `http://localhost:8081/swagger-ui.html`
 (OpenAPI JSON at `/v3/api-docs`).

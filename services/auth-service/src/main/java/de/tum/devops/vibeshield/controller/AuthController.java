@@ -10,7 +10,10 @@ import de.tum.devops.vibeshield.model.User;
 import de.tum.devops.vibeshield.repository.UserRepository;
 import de.tum.devops.vibeshield.service.JwtService;
 import de.tum.devops.vibeshield.service.PasswordResetService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +26,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -95,8 +100,15 @@ public class AuthController {
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        userRepository.findByEmail(request.getEmail())
-                .ifPresent(passwordResetService::requestReset);
+        try {
+            userRepository.findByEmail(request.getEmail())
+                    .ifPresent(passwordResetService::requestReset);
+        } catch (MailException exception) {
+            // Keep the public response indistinguishable from an unknown email while making
+            // the delivery failure visible to operators. The transactional reset request is
+            // rolled back, so an undelivered token is not left active.
+            log.error("Could not deliver password reset email", exception);
+        }
 
         return ResponseEntity.ok(Map.of("message",
                 "If that email is registered, a password reset link has been sent."));

@@ -26,9 +26,18 @@ services:
     container_name: vibeshield-auth
     depends_on:
       - database
+      - mailpit
     environment:
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
       APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me-minimum-32-chars-required}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-mailpit}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-1025}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-false}
+      SPRING_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:-false}
+      PASSWORD_RESET_MAIL_FROM: ${PASSWORD_RESET_MAIL_FROM:-no-reply@vibeshield.local}
+      PASSWORD_RESET_PAGE_URL: ${PASSWORD_RESET_PAGE_URL:-http://localhost:3000/reset-password}
       OTEL_SERVICE_NAME: auth-service
       OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
       OTEL_TRACES_EXPORTER: otlp
@@ -171,6 +180,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: vibeshield-mailpit
+    ports:
+      - "8025:8025"
+    expose:
+      - "1025"
 volumes:
     postgres_data:
     ollama_models:

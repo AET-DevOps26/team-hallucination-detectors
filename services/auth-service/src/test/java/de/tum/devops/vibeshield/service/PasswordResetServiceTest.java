@@ -22,13 +22,15 @@ class PasswordResetServiceTest {
 
     private PasswordResetTokenRepository tokenRepository;
     private UserRepository userRepository;
+    private PasswordResetEmailService emailService;
     private PasswordResetService service;
 
     @BeforeEach
     void setUp() {
         tokenRepository = mock(PasswordResetTokenRepository.class);
         userRepository = mock(UserRepository.class);
-        service = new PasswordResetService(tokenRepository, userRepository);
+        emailService = mock(PasswordResetEmailService.class);
+        service = new PasswordResetService(tokenRepository, userRepository, emailService);
     }
 
     private User user(long id, String email) {
@@ -59,6 +61,7 @@ class PasswordResetServiceTest {
         verify(tokenRepository).save(captor.capture());
         assertThat(captor.getValue().getToken()).isNotBlank();
         assertThat(captor.getValue().getExpiresAt()).isAfter(Instant.now());
+        verify(emailService).sendResetLink("a@b.com", captor.getValue().getToken());
     }
 
     @Test

@@ -27,6 +27,13 @@ describe("ResetPasswordPage", () => {
     expect(client.resetPassword).not.toHaveBeenCalled();
   });
 
+  it("rejects a reset link without a token", () => {
+    render(<ResetPasswordPage navigate={vi.fn()} token="" />);
+
+    expect(screen.getByText(/reset link is invalid/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update password" })).toBeDisabled();
+  });
+
   it("submits the token and new password, then shows the success screen", async () => {
     client.resetPassword.mockResolvedValue(undefined);
     render(<ResetPasswordPage navigate={vi.fn()} token="reset-token" />);

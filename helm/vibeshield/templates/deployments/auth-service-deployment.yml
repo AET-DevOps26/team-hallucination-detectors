@@ -38,6 +38,25 @@ spec:
                 secretKeyRef:
                   name: vibeshield-secrets
                   key: SPRING_DATASOURCE_PASSWORD
+            - name: SPRING_MAIL_HOST
+              value: {{ .Values.authService.mail.host | quote }}
+            - name: SPRING_MAIL_PORT
+              value: {{ .Values.authService.mail.port | quote }}
+            - name: SPRING_MAIL_USERNAME
+              value: {{ .Values.authService.mail.username | quote }}
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vibeshield-secrets
+                  key: SPRING_MAIL_PASSWORD
+            - name: SPRING_MAIL_SMTP_AUTH
+              value: {{ .Values.authService.mail.smtpAuth | quote }}
+            - name: SPRING_MAIL_SMTP_STARTTLS_ENABLE
+              value: {{ .Values.authService.mail.starttls | quote }}
+            - name: PASSWORD_RESET_MAIL_FROM
+              value: {{ .Values.authService.mail.from | quote }}
+            - name: PASSWORD_RESET_PAGE_URL
+              value: {{ .Values.authService.passwordResetPageUrl | quote }}
             - name: OTEL_SERVICE_NAME
               value: "auth-service"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

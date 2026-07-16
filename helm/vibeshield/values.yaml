@@ -9,6 +9,16 @@ images:
   scannerService: ghcr.io/aet-devops26/team-hallucination-detectors-scanner-service
   tag: latest
 
+authService:
+  passwordResetPageUrl: "https://ge65poj.stud.k8s.aet.cit.tum.de/reset-password"
+  mail:
+    host: ""
+    port: 587
+    username: ""
+    from: "no-reply@vibeshield.local"
+    smtpAuth: true
+    starttls: true
+
 langchainService:
   modelName: "gpt-4o-mini"
   openaiBaseUrl: "https://api.openai.com/v1"
@@ -47,6 +57,7 @@ secrets:
   dbPassword: vibeshield
   openaiApiKey: ""
   logosApiKey: ""
+  smtpPassword: ""
 
 autoscaling:
   enabled: true

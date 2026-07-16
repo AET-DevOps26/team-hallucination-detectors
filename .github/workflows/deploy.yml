@@ -46,20 +46,45 @@ jobs:
 
       - name: Write .env and start services
         uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        env:
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          PASSWORD_RESET_MAIL_FROM: ${{ vars.PASSWORD_RESET_MAIL_FROM }}
+          PASSWORD_RESET_PAGE_URL: ${{ vars.AZURE_PUBLIC_URL || format('http://{0}:3000', secrets.AZURE_PUBLIC_IP) }}/reset-password
         with:
           host: ${{ secrets.AZURE_PUBLIC_IP }}
           username: ${{ secrets.AZURE_USER }}
           key: ${{ secrets.AZURE_PRIVATE_KEY }}
+          envs: SMTP_HOST,SMTP_PORT,SMTP_USERNAME,SMTP_PASSWORD,PASSWORD_RESET_MAIL_FROM,PASSWORD_RESET_PAGE_URL
           script: |
             cd ~/app
 
+            for name in SMTP_HOST SMTP_USERNAME SMTP_PASSWORD PASSWORD_RESET_MAIL_FROM; do
+              eval "value=\${$name}"
+              if [ -z "$value" ]; then
+                echo "Required password-reset mail setting $name is missing" >&2
+                exit 1
+              fi
+            done
+
             # Write env file from GitHub Actions secrets so docker compose has all required vars
-            cat > .env <<'ENVEOF'
+            umask 077
+            cat > .env <<ENVEOF
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             SPRING_DATASOURCE_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             APP_JWT_SECRET=${{ secrets.APP_JWT_SECRET }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             LANGCHAIN_MODEL_NAME=gpt-4o-mini
+            SPRING_MAIL_HOST=$SMTP_HOST
+            SPRING_MAIL_PORT=$SMTP_PORT
+            SPRING_MAIL_USERNAME=$SMTP_USERNAME
+            SPRING_MAIL_PASSWORD=$SMTP_PASSWORD
+            SPRING_MAIL_SMTP_AUTH=true
+            SPRING_MAIL_SMTP_STARTTLS_ENABLE=true
+            PASSWORD_RESET_MAIL_FROM=$PASSWORD_RESET_MAIL_FROM
+            PASSWORD_RESET_PAGE_URL=$PASSWORD_RESET_PAGE_URL
             ENVEOF
 
             docker compose pull --ignore-pull-failures || true
